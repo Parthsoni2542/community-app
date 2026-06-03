@@ -72,3 +72,5 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+*.json
+functions/communityadvisory-76bf6-6eb69b2f8a06.json
