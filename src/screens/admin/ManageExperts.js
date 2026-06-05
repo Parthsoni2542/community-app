@@ -1,865 +1,1472 @@
-// import React, { useEffect, useState } from 'react';
-// import {
-//   View, Text, StyleSheet, FlatList, TouchableOpacity,
-//   Alert, ActivityIndicator, Switch,
-// } from 'react-native';
-// import firestore from '@react-native-firebase/firestore';
-
-// export default function ManageExperts() {
-//   const [experts, setExperts] = useState([]);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const unsubscribe = firestore()
-//       .collection('users')
-//       .where('role', '==', 'expert')
-//       .onSnapshot((snap) => {
-//         setExperts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-//         setLoading(false);
-//       });
-//     return unsubscribe;
-//   }, []);
-
-//   const toggleActive = async (id, current) => {
-//     await firestore().collection('users').doc(id).update({ isActive: !current });
-//   };
-
-//   const handleDelete = (id) => {
-//     Alert.alert('Delete Expert?', 'Yeh expert delete ho jayega', [
-//       { text: 'Cancel', style: 'cancel' },
-//       { text: 'Delete', style: 'destructive', onPress: () => firestore().collection('users').doc(id).delete() },
-//     ]);
-//   };
-
-//   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#2563EB" />;
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Manage Experts</Text>
-//       <FlatList
-//         data={experts}
-//         keyExtractor={(item) => item.id}
-//         renderItem={({ item }) => (
-//           <View style={styles.card}>
-//             <View style={styles.avatar}>
-//               <Text style={{ fontSize: 22 }}>👨‍⚕️</Text>
-//             </View>
-//             <View style={{ flex: 1 }}>
-//               <Text style={styles.name}>{item.name}</Text>
-//               <Text style={styles.email}>{item.email}</Text>
-//               <Text style={styles.cat}>{item.category || 'No Category'}</Text>
-//             </View>
-//             <Switch
-//               value={item.isActive !== false}
-//               onValueChange={() => toggleActive(item.id, item.isActive !== false)}
-//               trackColor={{ true: '#2563EB' }}
-//             />
-//             <TouchableOpacity onPress={() => handleDelete(item.id)} style={{ marginLeft: 8 }}>
-//               <Text style={{ color: '#DC2626', fontSize: 18 }}>🗑️</Text>
-//             </TouchableOpacity>
-//           </View>
-//         )}
-//         ListEmptyComponent={<Text style={styles.empty}>Koi expert nahi hai</Text>}
-//       />
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#F9FAFB', padding: 20 },
-//   title    : { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 20 },
-//   card     : { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10 },
-//   avatar   : { width: 46, height: 46, borderRadius: 23, backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-//   name     : { fontSize: 15, fontWeight: '600', color: '#111827' },
-//   email    : { fontSize: 12, color: '#6B7280' },
-//   cat      : { fontSize: 12, color: '#2563EB', marginTop: 2 },
-//   empty    : { textAlign: 'center', color: '#9CA3AF', marginTop: 40 },
-// });
-
-
-import React, { useEffect, useState } from 'react';
+import React, {
+  useEffect, useState, useCallback, memo, useMemo,
+} from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Alert, Modal, ActivityIndicator,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  Modal,
+  ActivityIndicator,
+  StatusBar,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import { getApp, initializeApp, getApps } from '@react-native-firebase/app';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Feather';
+import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
-  getFirestore, collection, onSnapshot, addDoc, updateDoc,
-  deleteDoc, doc, serverTimestamp, orderBy, query,
-  getDocs, setDoc,
+  getFirestore,
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  orderBy,
+  query,
+  getDocs,
+  setDoc,
 } from '@react-native-firebase/firestore';
 
+// ── Design tokens — unified with ManageCategories / ManageSubCategories ────────
+
+const COLORS = {
+  primary: '#0D7B7A',
+  primaryLight: '#F0FDFA',
+  primaryBorder: '#E0F2F1',
+  inactive: '#94A3B8',
+  surface: '#FFFFFF',
+  background: '#F4FAFA',
+  textPrimary: '#0F172A',
+  textSub: '#64748B',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+  shadow: '#0D7B7A',
+  purple: '#7C3AED',
+  purpleLight: '#F5F3FF',
+  purpleBorder: '#DDD6FE',
+  amber: '#92400E',
+  amberLight: '#FEF3C7',
+};
+
+// Firebase REST endpoint for creating Auth users without signing out the admin
+const FIREBASE_API_KEY = 'AIzaSyD7Lr0SGgD6oUfMujCFzEkNC0iaErx0kCY';
+
+// Fixed card height for getItemLayout
+const CARD_HEIGHT = 110;
+const CARD_MARGIN = 12;
+const ITEM_HEIGHT = CARD_HEIGHT + CARD_MARGIN;
+
+// ── Blank form ─────────────────────────────────────────────────────────────────
+
+const BLANK_FORM = {
+  name: '',
+  mobile: '',
+  email: '',
+  address: '',
+  experience: '',
+  categoryId: '',
+  categoryName: '',
+  subcategoryId: '',
+  subcategoryName: '',
+  degree: '',
+  certDetails: '',
+};
+
+// ── Skeleton ───────────────────────────────────────────────────────────────────
+
+const SkeletonCard = memo(() => (
+  <View style={styles.skeletonCard}>
+    <View style={styles.skeletonAvatar} />
+    <View style={styles.skeletonLines}>
+      <View style={styles.skeletonLineA} />
+      <View style={styles.skeletonLineB} />
+      <View style={styles.skeletonLineC} />
+    </View>
+  </View>
+));
+
+// ── Tag pill ───────────────────────────────────────────────────────────────────
+
+const Tag = memo(({ label, bgColor, textColor }) => (
+  <View style={[styles.tag, { backgroundColor: bgColor }]}>
+    <Text style={[styles.tagText, { color: textColor }]}>{label}</Text>
+  </View>
+));
+
+// ── Expert card ────────────────────────────────────────────────────────────────
+
+const ExpertCard = memo(({ item, onEdit, onDelete, onToggleActive }) => {
+  const isActive = item.isActive !== false;
+
+  return (
+    <View style={styles.card}>
+      {/* Avatar */}
+      <View style={styles.avatar}>
+        <Text style={styles.avatarText}>
+          {item.name?.charAt(0)?.toUpperCase() ?? '?'}
+        </Text>
+      </View>
+
+      {/* Info */}
+      <View style={styles.cardInfo}>
+        <Text style={styles.expertName} numberOfLines={1}>{item.name}</Text>
+
+        {!!item.mobile && (
+          <View style={styles.metaRow}>
+            <Icon name="phone" size={11} color={COLORS.textSub} />
+            <Text style={styles.metaText}>{item.mobile}</Text>
+          </View>
+        )}
+
+        {!!item.degree && (
+          <View style={styles.metaRow}>
+            <MatIcon name="school-outline" size={12} color={COLORS.purple} />
+            <Text style={[styles.metaText, { color: COLORS.purple }]}>
+              {item.degree}
+            </Text>
+          </View>
+        )}
+
+        {/* Tags row — gap replaced with marginRight */}
+        <View style={styles.tagRow}>
+          {!!item.categoryName && (
+            <Tag
+              label={item.categoryName}
+              bgColor={COLORS.primaryLight}
+              textColor={COLORS.primary}
+            />
+          )}
+          {!!item.subcategoryName && (
+            <Tag
+              label={item.subcategoryName}
+              bgColor="#D1FAE5"
+              textColor="#065F46"
+            />
+          )}
+          {!!item.experience && (
+            <Tag
+              label={`${item.experience} yr`}
+              bgColor={COLORS.amberLight}
+              textColor={COLORS.amber}
+            />
+          )}
+        </View>
+      </View>
+
+      {/* Actions column */}
+      <View style={styles.cardActions}>
+        {/* Active toggle */}
+        <TouchableOpacity
+          style={[
+            styles.statusBtn,
+            { backgroundColor: isActive ? '#D1FAE5' : COLORS.dangerBg },
+          ]}
+          onPress={onToggleActive}
+          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+        >
+          <Text style={[
+            styles.statusBtnText,
+            { color: isActive ? '#065F46' : COLORS.danger },
+          ]}>
+            {isActive ? 'Active' : 'Off'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Edit */}
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={onEdit}
+          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+        >
+          <Icon name="edit-2" size={14} color={COLORS.primary} />
+        </TouchableOpacity>
+
+        {/* Delete */}
+        <TouchableOpacity
+          style={[styles.actionBtn, styles.actionBtnDanger]}
+          onPress={onDelete}
+          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+        >
+          <Icon name="trash-2" size={14} color={COLORS.danger} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+// ── Section wrapper ────────────────────────────────────────────────────────────
+
+const SectionBox = memo(({ iconName, iconLib = 'feather', title, children }) => (
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      {iconLib === 'mat'
+        ? <MatIcon name={iconName} size={16} color={COLORS.primary} />
+        : <Icon name={iconName} size={15} color={COLORS.primary} />
+      }
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+    {children}
+  </View>
+));
+
+// ── Field label ────────────────────────────────────────────────────────────────
+
+const FieldLabel = memo(({ label, required, optional }) => (
+  <Text style={styles.fieldLabel}>
+    {label}
+    {required && <Text style={styles.required}> *</Text>}
+    {optional && <Text style={styles.optional}> (Optional)</Text>}
+  </Text>
+));
+
+// ── Category / Subcategory selector ───────────────────────────────────────────
+/**
+ * Market-standard vertical list selector.
+ * Each option is a full-width tappable row with a leading icon,
+ * label, and a trailing checkmark when selected.
+ * No horizontal scroll. No emoji/image icons from the `icon` field.
+ */
+const OptionSelector = memo(({ options, selectedId, onSelect, emptyText }) => {
+  if (!options.length) {
+    return (
+      <View style={styles.selectorEmpty}>
+        <Icon name="inbox" size={16} color={COLORS.inactive} />
+        <Text style={styles.selectorEmptyText}>{emptyText}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.selectorList}>
+      {options.map((opt, index) => {
+        const selected = selectedId === opt.id;
+        const isLast = index === options.length - 1;
+        return (
+          <TouchableOpacity
+            key={opt.id}
+            style={[
+              styles.selectorRow,
+              selected && styles.selectorRowActive,
+              !isLast && styles.selectorRowBorder,
+            ]}
+            onPress={() => onSelect(opt)}
+            activeOpacity={0.7}
+          >
+            {/* Leading dot / check */}
+            <View style={[
+              styles.selectorDot,
+              selected && styles.selectorDotActive,
+            ]}>
+              {selected && (
+                <Icon name="check" size={10} color={COLORS.surface} />
+              )}
+            </View>
+
+            <Text
+              style={[
+                styles.selectorLabel,
+                selected && styles.selectorLabelActive,
+              ]}
+              numberOfLines={1}
+            >
+              {opt.name}
+            </Text>
+
+            {selected && (
+              <Icon name="check-circle" size={16} color={COLORS.primary} />
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
+// ── Main screen ────────────────────────────────────────────────────────────────
+
 export default function ManageExperts() {
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
   const [experts, setExperts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcats] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModal] = useState(false);
+  const [error, setError] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(BLANK_FORM);
 
-  const [form, setForm] = useState({
-    name: '', mobile: '', email: '', password: '',
-    address: '', experience: '',
-    categoryId: '', categoryName: '',
-    subcategoryId: '', subcategoryName: '',
-    degree: '',
-  });
+  // Single field updater — stable reference, no recreation per field
+  const setField = useCallback((key, val) => {
+    setForm((prev) => ({ ...prev, [key]: val }));
+  }, []);
 
-  const setField = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-
-  // Load experts
+  // ── Firestore: experts listener ──────────────────────────────────────────
   useEffect(() => {
     const db = getFirestore();
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      setExperts(
-        snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((u) => u.role === 'expert'),
-      );
-      setLoading(false);
-    });
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setExperts(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((u) => u.role === 'expert'),
+        );
+        setLoading(false);
+        setError(false);
+      },
+      (err) => {
+        console.error('Experts snapshot error:', err);
+        setLoading(false);
+        setError(true);
+      },
+    );
     return unsub;
   }, []);
 
-  // Load categories
+  // ── One-shot: load categories for the modal ──────────────────────────────
   useEffect(() => {
-    const db = getFirestore();
-    getDocs(collection(db, 'categories')).then((snap) => {
+    getDocs(collection(getFirestore(), 'categories')).then((snap) => {
       setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+    }).catch((err) => console.error('Categories load error:', err));
   }, []);
 
-  // Load subcategories when category changes
+  // ── One-shot: load subcategories when category changes ───────────────────
   useEffect(() => {
-    if (!form.categoryId) { setSubcats([]); return; }
-    const db = getFirestore();
+    if (!form.categoryId) { setSubcategories([]); return; }
+
     getDocs(
-      collection(db, 'categories', form.categoryId, 'subcategories'),
+      collection(getFirestore(), 'categories', form.categoryId, 'subcategories'),
     ).then((snap) => {
-      setSubcats(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    });
+      setSubcategories(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }).catch((err) => console.error('Subcategories load error:', err));
   }, [form.categoryId]);
 
-  const resetForm = () => {
-    setForm({
-      name: '', mobile: '', email: '', password: '',
-      address: '', experience: '',
-      categoryId: '', categoryName: '',
-      subcategoryId: '', subcategoryName: '',
-      degree: '',
-    });
-    setEditId(null);
-  };
+  // ── Form helpers ─────────────────────────────────────────────────────────
 
-  const openAdd = () => { resetForm(); setModal(true); };
-  const openEdit = (item) => {
+  const resetForm = useCallback(() => {
+    setForm(BLANK_FORM);
+    setEditId(null);
+  }, []);
+
+  const openAdd = useCallback(() => {
+    resetForm();
+    setModalVisible(true);
+  }, [resetForm]);
+
+  const openEdit = useCallback((item) => {
     setEditId(item.id);
     setForm({
-      name: item.name || '',
-      mobile: item.mobile || '',
-      email: item.email || '',
+      name: item.name ?? '',
+      mobile: item.mobile ?? '',
+      email: item.email ?? '',
       password: '',
-      address: item.address || '',
-      experience: item.experience || '',
-      categoryId: item.categoryId || '',
-      categoryName: item.categoryName || '',
-      subcategoryId: item.subcategoryId || '',
-      subcategoryName: item.subcategoryName || '',
-      degree: item.degree || '',
+      address: item.address ?? '',
+      experience: item.experience ?? '',
+      categoryId: item.categoryId ?? '',
+      categoryName: item.categoryName ?? '',
+      subcategoryId: item.subcategoryId ?? '',
+      subcategoryName: item.subcategoryName ?? '',
+      degree: item.degree ?? '',
+      certDetails: item.certDetails ?? '',
     });
-    setModal(true);
-  };
+    setModalVisible(true);
+  }, []);
 
-  // const handleSave = async () => {
-  //   const { name, mobile, email, password, address,
-  //           experience, categoryId, categoryName,
-  //           subcategoryId, subcategoryName, degree } = form;
+  const closeModal = useCallback(() => {
+    setModalVisible(false);
+    resetForm();
+  }, [resetForm]);
 
-  //   if (!name || !mobile || !email || !categoryId) {
-  //     Alert.alert('Error', 'Name, Mobile, Email aur Category required hai');
+  // ── Save (add / update) ──────────────────────────────────────────────────
+  // const handleSave = useCallback(async () => {
+  //   const {
+  //     name, mobile, email, password, address, experience,
+  //     categoryId, categoryName, subcategoryId, subcategoryName,
+  //     degree, certDetails,
+  //   } = form;
+
+  //   if (!name.trim() || !mobile.trim() || !categoryId) {
+  //     Alert.alert('Required Fields', 'Please fill in Name, Mobile, Email, and Category.');
   //     return;
   //   }
-  //   if (!editId && !password) {
-  //     Alert.alert('Error', 'Password required hai naye expert ke liye');
+  //   if (!editId && !mobile.trim()) {
+  //     // Alert.alert('Password Required', 'Please set a password for the new expert.');
   //     return;
   //   }
-
 
   //   setSaving(true);
   //   try {
   //     const db  = getFirestore();
   //     let   uid = editId;
 
-  //     // New expert — Firebase Auth mein create karo
+  //     // Create Firebase Auth user via REST API — admin session unaffected
   //     if (!editId) {
-  //       const res = await auth().createUserWithEmailAndPassword(email, password);
-  //       uid = res.user.uid;
-  //     }
-
-  //     const data = {
-  //       name, mobile, email, address, experience,
-  //       categoryId, categoryName,
-  //       subcategoryId, subcategoryName,
-  //       degree,
-  //       role    : 'expert',
-  //       isActive: true,
-  //     };
-
-  //     if (editId) {
-  //       await updateDoc(doc(db, 'users', editId), data);
-  //     } else {
-  //       await setDoc(doc(db, 'users', uid), {
-  //         ...data,
-  //         createdAt: serverTimestamp(),
-  //       });
-  //     }
-
-  //     setModal(false);
-  //     resetForm();
-  //   } catch (e) {
-  //     Alert.alert('Error', e.message);
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-
-  // const handleSave = async () => {
-  //   const {
-  //     name, mobile, email, password, address,
-  //     experience, categoryId, categoryName,
-  //     subcategoryId, subcategoryName, degree,
-  //   } = form;
-
-  //   if (!name || !mobile || !email || !categoryId) {
-  //     Alert.alert('Error', 'Name, Mobile, Email aur Category required hai');
-  //     return;
-  //   }
-  //   if (!editId && !password) {
-  //     Alert.alert('Error', 'Password required hai naye expert ke liye');
-  //     return;
-  //   }
-
-  //   setSaving(true);
-  //   try {
-  //     const db = getFirestore();
-  //     let uid = editId;
-
-  //     if (!editId) {
-  //       // ✅ Secondary app banao taaki admin logout na ho
-  //       const secondaryAppName = 'SecondaryApp';
-  //       const existingApps = getApps();
-  //       const alreadyExists = existingApps.find(a => a.name === secondaryAppName);
-
-  //       // Secondary app ka config — same as google-services.json
-  //       const firebaseConfig = {
-  //         apiKey: 'AIzaSyD7Lr0SGgD6oUfMujCFzEkNC0iaErx0kCY',
-  //         projectId: 'communityadvisory-76bf6',
-  //         storageBucket: 'communityadvisory-76bf6.firebasestorage.app',
-  //         messagingSenderId: '187110378547',
-  //         appId: '1:187110378547:android:b0de7a4eb73b9b50292746',
-  //       };
-
-  //       const secondaryApp = alreadyExists
-  //         ? alreadyExists
-  //         : initializeApp(firebaseConfig, secondaryAppName);
-
-  //       const secondaryAuth = auth(secondaryApp);
-
-  //       // Naya user create karo secondary app se
-  //       const res = await secondaryAuth.createUserWithEmailAndPassword(
-  //         email, password,
+  //       const res  = await fetch(
+  //         `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`,
+  //         {
+  //           method : 'POST',
+  //           headers: { 'Content-Type': 'application/json' },
+  //           body   : JSON.stringify({
+  //             email,
+  //             password,
+  //             returnSecureToken: true,
+  //           }),
+  //         },
   //       );
-  //       uid = res.user.uid;
+  //       const json = await res.json();
 
-  //       // Secondary app se logout karo — admin ka session safe rahega
-  //       await secondaryAuth.signOut();
+  //       if (json.error) {
+  //         Alert.alert('Registration Failed', json.error.message);
+  //         setSaving(false);
+  //         return;
+  //       }
+  //       uid = json.localId;
   //     }
 
-  //     const data = {
-  //       name, mobile, email, address, experience,
-  //       categoryId, categoryName,
-  //       subcategoryId, subcategoryName,
-  //       degree,
-  //       role: 'expert',
-  //       isActive: true,
+  //     const expertData = {
+  //       name         : name.trim(),
+  //       mobile       : mobile.trim(),
+  //       email        : email.trim(),
+  //       address      : address.trim(),
+  //       experience   : experience.trim(),
+  //       categoryId,
+  //       categoryName,
+  //       subcategoryId,
+  //       subcategoryName,
+  //       degree       : degree.trim(),
+  //       certDetails  : certDetails.trim(),
+  //       role         : 'expert',
+  //       isActive     : true,
   //     };
 
   //     if (editId) {
-  //       await updateDoc(doc(db, 'users', editId), data);
+  //       await updateDoc(doc(db, 'users', editId), expertData);
   //     } else {
   //       await setDoc(doc(db, 'users', uid), {
-  //         ...data,
+  //         ...expertData,
   //         createdAt: serverTimestamp(),
   //       });
   //     }
 
-  //     setModal(false);
+  //     setModalVisible(false);
   //     resetForm();
-  //     Alert.alert('✅ Success', `${name} expert add ho gaya!`);
-  //   } catch (e) {
-  //     Alert.alert('Error', e.message);
+  //     Alert.alert('Success', `${name.trim()} has been ${editId ? 'updated' : 'added'} as an expert.`);
+  //   } catch (err) {
+  //     Alert.alert('Error', err.message ?? 'Something went wrong. Please try again.');
   //   } finally {
   //     setSaving(false);
   //   }
-  // };
+  // }, [form, editId, resetForm]);
 
 
-  const handleSave = async () => {
-  const {
-    name, mobile, email, password, address,
-    experience, categoryId, categoryName,
-    subcategoryId, subcategoryName, degree,
-  } = form;
+  const handleSave = useCallback(async () => {
+    const {
+      name, mobile, address, experience,
+      categoryId, categoryName, subcategoryId, subcategoryName,
+      degree, certDetails, email,
+    } = form;
 
-  if (!name || !mobile || !email || !categoryId) {
-    Alert.alert('Error', 'Name, Mobile, Email aur Category required hai');
-    return;
-  }
-  if (!editId && !password) {
-    Alert.alert('Error', 'Password required hai naye expert ke liye');
-    return;
-  }
+    // ── Validation ──
+    if (!name.trim() || !mobile.trim() || !categoryId) {
+      Alert.alert('Required Fields', 'Please fill in Name, Mobile, and Category.');
+      return;
+    }
 
-  setSaving(true);
-  try {
-    const db  = getFirestore();
-    let   uid = editId;
+    setSaving(true);
+    try {
+      const db = getFirestore();
 
-    if (!editId) {
-      // ✅ Firebase REST API se user banao — admin logout NAHI hoga
-      const API_KEY = 'AIzaSyD7Lr0SGgD6oUfMujCFzEkNC0iaErx0kCY';
-      const res     = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
-        {
-          method : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({
-            email              : email,
-            password           : password,
-            returnSecureToken  : true,
-          }),
-        },
-      );
+      const expertData = {
+        name: name.trim(),
+        mobile: mobile.trim(),
+        phone: `+91${mobile.replace(/\D/g, '')}`,  // login ke liye
+        email: email.trim() || null,
+        address: address.trim(),
+        experience: experience.trim(),
+        categoryId,
+        categoryName,
+        subcategoryId,
+        subcategoryName,
+        degree: degree.trim(),
+        certDetails: certDetails.trim(),
+        role: 'expert',
+        isActive: true,
+      };
 
-      const data = await res.json();
-
-      // Error check
-      if (data.error) {
-        Alert.alert('Error', data.error.message);
-        setSaving(false);
-        return;
+      if (editId) {
+        await updateDoc(doc(db, 'users', editId), expertData);
+      } else {
+        // Auto ID — Firebase Auth OTP verify hone par same phone se match hoga
+        const newRef = doc(collection(db, 'users'));
+        await setDoc(newRef, {
+          ...expertData,
+          createdAt: serverTimestamp(),
+        });
       }
 
-      uid = data.localId; // ✅ Naya user ka UID
-      console.log('✅ Expert UID:', uid);
+      setModalVisible(false);
+      resetForm();
+      Alert.alert('Success', `${name.trim()} has been ${editId ? 'updated' : 'added'} as an expert.`);
+    } catch (err) {
+      Alert.alert('Error', err.message ?? 'Something went wrong.');
+    } finally {
+      setSaving(false);
     }
+  }, [form, editId, resetForm]);
 
-    // Firestore mein save karo
-    const expertData = {
-      name, mobile, email, address, experience,
-      categoryId, categoryName,
-      subcategoryId, subcategoryName,
-      degree         : form.degree       || '',
-      certDetails    : form.certDetails  || '',
-      role           : 'expert',
-      isActive       : true,
-    };
-
-    if (editId) {
-      await updateDoc(doc(db, 'users', editId), expertData);
-    } else {
-      await setDoc(doc(db, 'users', uid), {
-        ...expertData,
-        createdAt: serverTimestamp(),
-      });
-    }
-
-    setModal(false);
-    resetForm();
-    Alert.alert('✅ Success', `${name} expert add ho gaya!`);
-
-  } catch (e) {
-    Alert.alert('Error', e.message);
-  } finally {
-    setSaving(false);
-  }
-};
-
-  const handleDelete = (id, name) => {
-    Alert.alert('Delete Expert?', `"${name}" delete hoga`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          const db = getFirestore();
-          await deleteDoc(doc(db, 'users', id));
+  // ── Delete ────────────────────────────────────────────────────────────────
+  const handleDelete = useCallback((id, name) => {
+    Alert.alert(
+      'Remove Expert',
+      `Are you sure you want to remove "${name}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(getFirestore(), 'users', id));
+            } catch (err) {
+              Alert.alert('Error', 'Failed to remove expert. Please try again.');
+            }
+          },
         },
-      },
-    ]);
-  };
+      ],
+    );
+  }, []);
 
-  const toggleActive = async (id, current) => {
-    const db = getFirestore();
-    await updateDoc(doc(db, 'users', id), { isActive: !current });
-  };
+  // ── Toggle active ─────────────────────────────────────────────────────────
+  const handleToggleActive = useCallback(async (id, current) => {
+    try {
+      await updateDoc(doc(getFirestore(), 'users', id), { isActive: !current });
+    } catch (err) {
+      Alert.alert('Error', 'Could not update expert status.');
+    }
+  }, []);
 
-  const renderExpert = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.name?.charAt(0)?.toUpperCase() || '?'}
-        </Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.expertName}>{item.name}</Text>
-        <Text style={styles.expertMeta}>📱 {item.mobile || '—'}</Text>
-        {item.degree ? (
-          <Text style={styles.expertDegree}>🎓 {item.degree}</Text>
-        ) : null}
-        <View style={styles.tagRow}>
-          {item.categoryName ? (
-            <View style={styles.catTag}>
-              <Text style={styles.catTagText}>{item.categoryName}</Text>
-            </View>
-          ) : null}
-          {item.subcategoryName ? (
-            <View style={styles.subTag}>
-              <Text style={styles.subTagText}>{item.subcategoryName}</Text>
-            </View>
-          ) : null}
-          {item.experience ? (
-            <View style={styles.expTag}>
-              <Text style={styles.expTagText}>⭐ {item.experience} yr</Text>
-            </View>
-          ) : null}
+  // ── Category / subcategory selection ─────────────────────────────────────
+  const handleSelectCategory = useCallback((cat) => {
+    setForm((prev) => ({
+      ...prev,
+      categoryId: cat.id,
+      categoryName: cat.name,
+      subcategoryId: '',
+      subcategoryName: '',
+    }));
+  }, []);
+
+  const handleSelectSubcategory = useCallback((sub) => {
+    setForm((prev) => ({
+      ...prev,
+      subcategoryId: sub.id,
+      subcategoryName: sub.name,
+    }));
+  }, []);
+
+  // ── FlatList helpers ──────────────────────────────────────────────────────
+  const keyExtractor = useCallback((item) => item.id, []);
+
+  const getItemLayout = useCallback((_, index) => ({
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
+    index,
+  }), []);
+
+  const renderItem = useCallback(({ item }) => (
+    <ExpertCard
+      item={item}
+      onEdit={() => openEdit(item)}
+      onDelete={() => handleDelete(item.id, item.name)}
+      onToggleActive={() => handleToggleActive(item.id, item.isActive !== false)}
+    />
+  ), [openEdit, handleDelete, handleToggleActive]);
+
+  const ListEmpty = useCallback(() => (
+    <View style={styles.emptyBox}>
+      <MatIcon name="doctor" size={52} color={COLORS.primaryBorder} />
+      <Text style={styles.emptyTitle}>No Experts Yet</Text>
+      <Text style={styles.emptySub}>Tap "+ Add Expert" to register the first expert.</Text>
+    </View>
+  ), []);
+
+  // ── Live preview data (memoized) ──────────────────────────────────────────
+  const previewVisible = useMemo(() => !!form.name.trim(), [form.name]);
+
+  // ── Header padding ────────────────────────────────────────────────────────
+  const headerPaddingTop = Platform.OS === 'ios'
+    ? insets.top + 12
+    : insets.top + 16;
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+        <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View>
+            <Text style={styles.headerTitle}>Experts</Text>
+            <Text style={styles.headerSub}>Loading...</Text>
+          </View>
+        </View>
+        <View style={styles.headerDivider} />
+        <View style={styles.skeletonContainer}>
+          {[1, 2, 3, 4].map((k) => <SkeletonCard key={k} />)}
         </View>
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.statusBtn, {
-            backgroundColor: item.isActive !== false ? '#D1FAE5' : '#FEE2E2',
-          }]}
-          onPress={() => toggleActive(item.id, item.isActive !== false)}
-        >
-          <Text style={{
-            fontSize: 10, fontWeight: '700',
-            color: item.isActive !== false ? '#065F46' : '#DC2626',
-          }}>
-            {item.isActive !== false ? 'Active' : 'Off'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
-          <Text style={styles.editBtnText}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item.id, item.name)}>
-          <Text style={styles.delBtnText}>🗑️</Text>
-        </TouchableOpacity>
+    );
+  }
+
+  // ── Error ─────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Icon name="wifi-off" size={40} color={COLORS.inactive} />
+        <Text style={styles.errorTitle}>Failed to Load</Text>
+        <Text style={styles.errorSub}>Check your connection and try again.</Text>
       </View>
-    </View>
-  );
+    );
+  }
 
-  if (loading) return (
-    <View style={styles.centered}>
-      <ActivityIndicator size="large" color="#2563EB" />
-    </View>
-  );
-
+  // ── Main ──────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
         <View>
           <Text style={styles.headerTitle}>Experts</Text>
-          <Text style={styles.headerSub}>{experts.length} registered experts</Text>
+          <Text style={styles.headerSub}>
+            {experts.length} {experts.length === 1 ? 'expert' : 'experts'} registered
+          </Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
-          <Text style={styles.addBtnText}>+ Add Expert</Text>
+        <TouchableOpacity style={styles.addBtn} onPress={openAdd} activeOpacity={0.8}>
+          <Icon name="plus" size={16} color={COLORS.surface} />
+          <Text style={styles.addBtnText}>Add Expert</Text>
         </TouchableOpacity>
       </View>
+      <View style={styles.headerDivider} />
 
+      {/* Expert list */}
       <FlatList
         data={experts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderExpert}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🩺</Text>
-            <Text style={styles.emptyText}>Koi expert nahi hai</Text>
-            <Text style={styles.emptySub}>+ Add Expert dabao</Text>
-          </View>
-        }
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
+        ListEmptyComponent={ListEmpty}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+        showsVerticalScrollIndicator={false}
       />
 
-      {/* Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ width: '100%' }}
-          >
-            <View style={styles.modalBox}>
-              <ScrollView showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled">
+      {/* Add / Edit Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={[styles.modalBox, { paddingBottom: insets.bottom + 8 }]}>
 
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>
-                  {editId ? '✏️  Edit Expert' : '➕  Add New Expert'}
-                </Text>
+            {/* Handle */}
+            <View style={styles.modalHandle} />
 
-                {/* ── Personal Info ── */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>👤  Personal Info</Text>
+            {/* Title row */}
+            <View style={styles.modalTitleRow}>
+              <View style={styles.modalTitleIcon}>
+                <Icon
+                  name={editId ? 'edit-2' : 'user-plus'}
+                  size={16}
+                  color={COLORS.primary}
+                />
+              </View>
+              <Text style={styles.modalTitle}>
+                {editId ? 'Edit Expert' : 'Add New Expert'}
+              </Text>
+              <TouchableOpacity
+                onPress={closeModal}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Icon name="x" size={20} color={COLORS.inactive} />
+              </TouchableOpacity>
+            </View>
 
-                  <Text style={styles.fieldLabel}>Full Name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Dr. Rahul Sharma"
-                    placeholderTextColor="#9CA3AF"
-                    value={form.name}
-                    onChangeText={(v) => setField('name', v)}
-                  />
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
 
-                  <Text style={styles.fieldLabel}>Mobile Number *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="+91 98765 43210"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
-                    value={form.mobile}
-                    onChangeText={(v) => setField('mobile', v)}
-                  />
+              {/* ── Personal Info ─────────────────────────────────────── */}
+              <SectionBox iconName="user" title="Personal Information">
 
-                  <Text style={styles.fieldLabel}>Email Address *</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="doctor@example.com"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={form.email}
-                    onChangeText={(v) => setField('email', v)}
-                    editable={!editId}
-                  />
+                <FieldLabel label="Full Name" required />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Dr. Rahul Sharma"
+                  placeholderTextColor={COLORS.inactive}
+                  value={form.name}
+                  onChangeText={(v) => setField('name', v)}
+                  returnKeyType="next"
+                  autoCapitalize="words"
+                />
 
-                  {!editId && (
-                    <>
-                      <Text style={styles.fieldLabel}>Password *</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Min 6 characters"
-                        placeholderTextColor="#9CA3AF"
-                        secureTextEntry
-                        value={form.password}
-                        onChangeText={(v) => setField('password', v)}
-                      />
-                    </>
-                  )}
+                <FieldLabel label="Mobile Number" required />
+                <TextInput
+                  style={styles.input}
+                  placeholder="+91 98765 43210"
+                  placeholderTextColor={COLORS.inactive}
+                  keyboardType="phone-pad"
+                  value={form.mobile}
+                  onChangeText={(v) => setField('mobile', v)}
+                  returnKeyType="next"
+                />
 
-                  <Text style={styles.fieldLabel}>Address</Text>
-                  <TextInput
-                    style={[styles.input, { height: 70, textAlignVertical: 'top' }]}
-                    placeholder="Clinic / Office Address"
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    value={form.address}
-                    onChangeText={(v) => setField('address', v)}
-                  />
+                <FieldLabel label="Email Address" optional />
+                <TextInput
+                  style={styles.input}
+                  placeholder="expert@example.com (optional)"
+                  placeholderTextColor={COLORS.inactive}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={form.email}
+                  onChangeText={(v) => setField('email', v)}
+                  editable={!editId}
+                  returnKeyType={editId ? 'next' : 'done'}
+                />
 
-                  <Text style={styles.fieldLabel}>Total Experience (Years)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 5"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="numeric"
-                    value={form.experience}
-                    onChangeText={(v) => setField('experience', v)}
-                  />
-                </View>
+                {/* {!editId && (
+                  <>
+                    <FieldLabel label="Password" required />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Minimum 6 characters"
+                      placeholderTextColor={COLORS.inactive}
+                      secureTextEntry
+                      value={form.password}
+                      onChangeText={(v) => setField('password', v)}
+                    />
+                  </>
+                )} */}
 
-                {/* ── Category ── */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>📂  Category & Specialization</Text>
+                <FieldLabel label="Address" optional />
+                <TextInput
+                  style={styles.inputMulti}
+                  placeholder="Clinic / office address"
+                  placeholderTextColor={COLORS.inactive}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  value={form.address}
+                  onChangeText={(v) => setField('address', v)}
+                />
 
-                  <Text style={styles.fieldLabel}>Category *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 14 }}>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      {categories.length === 0 ? (
-                        <Text style={{ color: '#94A3B8', fontSize: 13 }}>
-                          Pehle categories banao
+                <FieldLabel label="Years of Experience" optional />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 5"
+                  placeholderTextColor={COLORS.inactive}
+                  keyboardType="numeric"
+                  value={form.experience}
+                  onChangeText={(v) => setField('experience', v)}
+                />
+              </SectionBox>
+
+              {/* ── Category & Specialization ─────────────────────────── */}
+              <SectionBox
+                iconName="layers"
+                title="Category & Specialization"
+              >
+                <FieldLabel label="Service Category" required />
+
+                {/*
+                  Market-standard vertical selector.
+                  Full-width rows, checkmark on selection.
+                  No horizontal scroll, no icon field rendering.
+                */}
+                <OptionSelector
+                  options={categories}
+                  selectedId={form.categoryId}
+                  onSelect={handleSelectCategory}
+                  emptyText="No categories available. Please create categories first."
+                />
+
+                {/* Subcategory — only shown after a category is chosen */}
+                {form.categoryId !== '' && (
+                  <>
+                    <View style={styles.subSectionDivider} />
+                    <FieldLabel label="Specialization" optional />
+                    <OptionSelector
+                      options={subcategories}
+                      selectedId={form.subcategoryId}
+                      onSelect={handleSelectSubcategory}
+                      emptyText="No specializations available for this category."
+                    />
+                  </>
+                )}
+              </SectionBox>
+
+              {/* ── Qualifications ────────────────────────────────────── */}
+              <SectionBox
+                iconName="school-outline"
+                iconLib="mat"
+                title="Qualifications"
+              >
+                <FieldLabel label="Degree / Qualification" optional />
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. MBBS, LLB, CA, MD..."
+                  placeholderTextColor={COLORS.inactive}
+                  value={form.degree}
+                  onChangeText={(v) => setField('degree', v)}
+                />
+
+                <FieldLabel label="Additional Certifications" optional />
+                <TextInput
+                  style={styles.inputMulti}
+                  placeholder="e.g. AIIMS Delhi — 2015, Bar Council — 2018..."
+                  placeholderTextColor={COLORS.inactive}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  value={form.certDetails}
+                  onChangeText={(v) => setField('certDetails', v)}
+                />
+
+                {/* Degree preview badge */}
+                {!!form.degree && (
+                  <View style={styles.degreeBadge}>
+                    <MatIcon
+                      name="school-outline"
+                      size={20}
+                      color={COLORS.purple}
+                      style={{ marginRight: 10, marginTop: 2 }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.degreeBadgeTitle}>{form.degree}</Text>
+                      {!!form.certDetails && (
+                        <Text style={styles.degreeBadgeSub} numberOfLines={2}>
+                          {form.certDetails}
                         </Text>
-                      ) : (
-                        categories.map((cat) => (
-                          <TouchableOpacity
-                            key={cat.id}
-                            style={[
-                              styles.chipBtn,
-                              form.categoryId === cat.id && styles.chipBtnActive,
-                            ]}
-                            onPress={() => {
-                              setField('categoryId', cat.id);
-                              setField('categoryName', cat.name);
-                              setField('subcategoryId', '');
-                              setField('subcategoryName', '');
-                            }}
-                          >
-                            <Text style={styles.chipIcon}>{cat.icon}</Text>
-                            <Text style={[
-                              styles.chipText,
-                              form.categoryId === cat.id && styles.chipTextActive,
-                            ]}>
-                              {cat.name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))
                       )}
                     </View>
-                  </ScrollView>
-
-                  {subcategories.length > 0 && (
-                    <>
-                      <Text style={styles.fieldLabel}>Subcategory</Text>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}
-                        style={{ marginBottom: 14 }}>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          {subcategories.map((sub) => (
-                            <TouchableOpacity
-                              key={sub.id}
-                              style={[
-                                styles.chipBtn,
-                                form.subcategoryId === sub.id && styles.chipBtnActive,
-                              ]}
-                              onPress={() => {
-                                setField('subcategoryId', sub.id);
-                                setField('subcategoryName', sub.name);
-                              }}
-                            >
-                              <Text style={styles.chipIcon}>{sub.icon}</Text>
-                              <Text style={[
-                                styles.chipText,
-                                form.subcategoryId === sub.id && styles.chipTextActive,
-                              ]}>
-                                {sub.name}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </ScrollView>
-                    </>
-                  )}
-                </View>
-
-                {/* ── Degree Certificate ── */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>🎓  Degree Certificate</Text>
-                  <Text style={styles.fieldLabel}>Degree / Qualification</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. MBBS, LLB, CA, MD..."
-                    placeholderTextColor="#9CA3AF"
-                    value={form.degree}
-                    onChangeText={(v) => setField('degree', v)}
-                  />
-                  <Text style={styles.fieldLabel}>Additional Certifications</Text>
-                  <TextInput
-                    style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-                    placeholder="e.g. AIIMS Delhi - 2015, Bar Council - 2018..."
-                    placeholderTextColor="#9CA3AF"
-                    multiline
-                    value={form.certDetails}
-                    onChangeText={(v) => setField('certDetails', v)}
-                  />
-
-                  {/* Degree Preview Badge */}
-                  {form.degree ? (
-                    <View style={styles.degreeBadge}>
-                      <Text style={styles.degreeBadgeIcon}>🎓</Text>
-                      <View>
-                        <Text style={styles.degreeBadgeTitle}>{form.degree}</Text>
-                        {form.certDetails ? (
-                          <Text style={styles.degreeBadgeSub} numberOfLines={2}>
-                            {form.certDetails}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-
-                {/* ── Live Preview ── */}
-                {form.name ? (
-                  <View style={styles.previewCard}>
-                    <View style={styles.previewAvatar}>
-                      <Text style={styles.previewAvatarText}>
-                        {form.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.previewName}>{form.name}</Text>
-                      <Text style={styles.previewMeta}>
-                        {form.categoryName || 'No Category'}
-                        {form.subcategoryName ? ` › ${form.subcategoryName}` : ''}
-                      </Text>
-                      {form.degree ? (
-                        <Text style={styles.previewDegree}>🎓 {form.degree}</Text>
-                      ) : null}
-                      {form.experience ? (
-                        <Text style={styles.previewExp}>
-                          ⭐ {form.experience} years experience
-                        </Text>
-                      ) : null}
-                    </View>
                   </View>
-                ) : null}
+                )}
+              </SectionBox>
 
-                {/* Buttons */}
-                <View style={styles.modalBtns}>
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => { setModal(false); resetForm(); }}
-                  >
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.saveBtn}
-                    onPress={handleSave}
-                    disabled={saving}
-                  >
-                    {saving
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <Text style={styles.saveBtnText}>
-                        {editId ? 'Update' : 'Add Expert'}
+              {/* ── Live preview ──────────────────────────────────────── */}
+              {previewVisible && (
+                <View style={styles.previewCard}>
+                  <View style={styles.previewAvatar}>
+                    <Text style={styles.previewAvatarText}>
+                      {form.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.previewName} numberOfLines={1}>
+                      {form.name}
+                    </Text>
+                    <Text style={styles.previewMeta} numberOfLines={1}>
+                      {form.categoryName || 'No category selected'}
+                      {form.subcategoryName ? ` › ${form.subcategoryName}` : ''}
+                    </Text>
+                    {!!form.degree && (
+                      <Text style={styles.previewDegree} numberOfLines={1}>
+                        {form.degree}
                       </Text>
-                    }
-                  </TouchableOpacity>
+                    )}
+                    {!!form.experience && (
+                      <Text style={styles.previewExp}>
+                        {form.experience} years experience
+                      </Text>
+                    )}
+                  </View>
                 </View>
+              )}
 
-                <View style={{ height: 30 }} />
-              </ScrollView>
+              {/* Spacer so buttons don't sit against the bottom edge */}
+              <View style={{ height: 16 }} />
+            </ScrollView>
+
+            {/* Action buttons — outside ScrollView, always visible */}
+            <View style={styles.modalBtns}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={closeModal}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                onPress={handleSave}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                {saving ? (
+                  <ActivityIndicator color={COLORS.surface} size="small" />
+                ) : (
+                  <>
+                    <Icon
+                      name={editId ? 'check' : 'user-plus'}
+                      size={16}
+                      color={COLORS.surface}
+                    />
+                    <Text style={styles.saveBtnText}>
+                      {editId ? 'Update Expert' : 'Add Expert'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-          </KeyboardAvoidingView>
-        </View>
+
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
 }
 
+// ── Styles ─────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#FFFFFF', paddingHorizontal: 20,
-    paddingTop: 55, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
-  headerSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  addBtn: { backgroundColor: '#2563EB', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24 },
-  addBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
 
+  // ── Header ────────────────────────────────────────────────────────────────
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  headerSub: {
+    fontSize: 12,
+    color: COLORS.inactive,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: COLORS.primaryBorder,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  addBtnText: {
+    color: COLORS.surface,
+    fontWeight: '700',
+    fontSize: 14,
+    marginLeft: 6,
+  },
+
+  // ── List ──────────────────────────────────────────────────────────────────
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+
+  // ── Expert card ───────────────────────────────────────────────────────────
   card: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFFFFF', borderRadius: 18,
-    padding: 14, marginBottom: 12,
-    borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: CARD_MARGIN,
+    minHeight: CARD_HEIGHT,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   avatar: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#2563EB', justifyContent: 'center',
-    alignItems: 'center', marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  avatarText: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
-  expertName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  expertMeta: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  expertDegree: { fontSize: 12, color: '#7C3AED', marginTop: 2 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  catTag: { backgroundColor: '#DBEAFE', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  catTagText: { fontSize: 10, fontWeight: '700', color: '#1D4ED8' },
-  subTag: { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  subTagText: { fontSize: 10, fontWeight: '700', color: '#065F46' },
-  expTag: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  expTagText: { fontSize: 10, fontWeight: '700', color: '#92400E' },
-  actions: { alignItems: 'center', gap: 6 },
-  statusBtn: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
-  editBtn: { padding: 6 },
-  editBtnText: { fontSize: 16 },
-  delBtn: { padding: 6 },
-  delBtnText: { fontSize: 16 },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.surface,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  expertName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  metaText: {
+    fontSize: 12,
+    color: COLORS.textSub,
+    marginLeft: 5,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  tag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginRight: 5,
+    marginBottom: 4,
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardActions: {
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  statusBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginBottom: 6,
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  statusBtnText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 5,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+  },
+  actionBtnDanger: {
+    backgroundColor: COLORS.dangerBg,
+    borderColor: '#FCA5A5',
+  },
 
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { fontSize: 52, marginBottom: 14 },
-  emptyText: { fontSize: 17, fontWeight: '700', color: '#1E293B' },
-  emptySub: { fontSize: 13, color: '#94A3B8', marginTop: 6 },
+  // ── Skeleton ──────────────────────────────────────────────────────────────
+  skeletonContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: CARD_MARGIN,
+    height: CARD_HEIGHT,
+  },
+  skeletonAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#D1F4F2',
+    marginRight: 12,
+  },
+  skeletonLines: { flex: 1 },
+  skeletonLineA: {
+    height: 14,
+    width: '55%',
+    backgroundColor: '#D1F4F2',
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  skeletonLineB: {
+    height: 11,
+    width: '40%',
+    backgroundColor: '#E8F9F8',
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  skeletonLineC: {
+    height: 11,
+    width: '65%',
+    backgroundColor: '#E8F9F8',
+    borderRadius: 6,
+  },
 
-  modalOverlay: { flex: 1, backgroundColor: '#00000060', justifyContent: 'flex-end' },
+  // ── Empty state ───────────────────────────────────────────────────────────
+  emptyBox: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: 16,
+  },
+  emptySub: {
+    fontSize: 13,
+    color: COLORS.inactive,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // ── Error state ───────────────────────────────────────────────────────────
+  errorTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginTop: 14,
+  },
+  errorSub: {
+    fontSize: 13,
+    color: COLORS.inactive,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
   modalBox: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 22, paddingTop: 12, maxHeight: '93%',
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    maxHeight: '94%',
   },
-  modalHandle: { width: 40, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 20 },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.primaryBorder,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitleIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+  },
+  modalTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
 
+  // ── Section box ───────────────────────────────────────────────────────────
   section: {
-    backgroundColor: '#F8FAFC', borderRadius: 16,
-    padding: 16, marginBottom: 14,
-    borderWidth: 1, borderColor: '#F1F5F9',
+    backgroundColor: COLORS.background,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#64748B', marginBottom: 14 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.6, marginBottom: 7, textTransform: 'uppercase' },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primaryBorder,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+
+  // ── Field label ───────────────────────────────────────────────────────────
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSub,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  required: { color: COLORS.danger },
+  optional: {
+    color: COLORS.inactive,
+    fontWeight: '400',
+    textTransform: 'none',
+  },
+
+  // ── Inputs ────────────────────────────────────────────────────────────────
   input: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0',
-    borderRadius: 12, padding: 13, fontSize: 15, color: '#1E293B', marginBottom: 14,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    marginBottom: 14,
+  },
+  inputMulti: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    marginBottom: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
 
-  chipBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F1F5F9', borderRadius: 24,
-    paddingHorizontal: 14, paddingVertical: 9,
-    borderWidth: 1.5, borderColor: '#E2E8F0',
+  // ── Option selector ───────────────────────────────────────────────────────
+  selectorList: {
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 4,
+    backgroundColor: COLORS.surface,
   },
-  chipBtnActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
-  chipIcon: { fontSize: 16, marginRight: 6 },
-  chipText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
-  chipTextActive: { color: '#2563EB' },
+  selectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.surface,
+  },
+  selectorRowActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  selectorRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.primaryBorder,
+  },
+  selectorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryBorder,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  selectorDotActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  selectorLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.textSub,
+    fontWeight: '500',
+  },
+  selectorLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '700',
+  },
+  selectorEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    marginBottom: 4,
+  },
+  selectorEmptyText: {
+    fontSize: 13,
+    color: COLORS.inactive,
+    marginLeft: 8,
+    flex: 1,
+  },
 
+  // Sub-section divider between category and specialization
+  subSectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.primaryBorder,
+    marginVertical: 14,
+  },
+
+  // ── Degree badge ──────────────────────────────────────────────────────────
   degreeBadge: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    backgroundColor: '#F5F3FF', borderRadius: 12,
-    padding: 12, borderWidth: 1, borderColor: '#DDD6FE',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.purpleLight,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.purpleBorder,
+    marginTop: 2,
   },
-  degreeBadgeIcon: { fontSize: 22, marginRight: 10, marginTop: 2 },
-  degreeBadgeTitle: { fontSize: 14, fontWeight: '700', color: '#5B21B6' },
-  degreeBadgeSub: { fontSize: 12, color: '#8B5CF6', marginTop: 3 },
+  degreeBadgeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.purple,
+  },
+  degreeBadgeSub: {
+    fontSize: 12,
+    color: '#8B5CF6',
+    marginTop: 3,
+  },
 
+  // ── Live preview card ─────────────────────────────────────────────────────
   previewCard: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#EFF6FF', borderRadius: 14, padding: 14,
-    marginBottom: 16, borderWidth: 1, borderColor: '#BFDBFE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   previewAvatar: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#2563EB', justifyContent: 'center',
-    alignItems: 'center', marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  previewAvatarText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
-  previewName: { fontSize: 15, fontWeight: '700', color: '#1E3A8A' },
-  previewMeta: { fontSize: 12, color: '#3B82F6', marginTop: 2 },
-  previewDegree: { fontSize: 12, color: '#7C3AED', marginTop: 2 },
-  previewExp: { fontSize: 12, color: '#92400E', marginTop: 2 },
+  previewAvatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.surface,
+  },
+  previewName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  previewMeta: {
+    fontSize: 12,
+    color: COLORS.textSub,
+    marginTop: 2,
+  },
+  previewDegree: {
+    fontSize: 12,
+    color: COLORS.purple,
+    marginTop: 2,
+  },
+  previewExp: {
+    fontSize: 12,
+    color: COLORS.amber,
+    marginTop: 2,
+  },
 
-  modalBtns: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  cancelBtn: { flex: 1, backgroundColor: '#F1F5F9', borderRadius: 14, padding: 15, alignItems: 'center' },
-  cancelBtnText: { color: '#64748B', fontWeight: '700', fontSize: 15 },
-  saveBtn: { flex: 1, backgroundColor: '#2563EB', borderRadius: 14, padding: 15, alignItems: 'center' },
-  saveBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  // ── Modal buttons ─────────────────────────────────────────────────────────
+  modalBtns: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+  },
+  cancelBtnText: {
+    color: COLORS.textSub,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  saveBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: {
+    color: COLORS.surface,
+    fontWeight: '700',
+    fontSize: 15,
+    marginLeft: 6,
+  },
 });

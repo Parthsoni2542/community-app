@@ -1,237 +1,205 @@
-// import React, { useEffect, useState } from 'react';
-// import {
-//   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-//   TextInput, StatusBar, ActivityIndicator, FlatList,
-// } from 'react-native';
-// import {
-//   getFirestore, collection, onSnapshot,
-//   query, orderBy,
-// } from '@react-native-firebase/firestore';
-// import auth from '@react-native-firebase/auth';
-
-// export default function HomeScreen({ navigation }) {
-//   const [categories, setCategories] = useState([]);
-//   const [loading, setLoading]       = useState(true);
-//   const [search, setSearch]         = useState('');
-//   const [userName, setUserName]     = useState('');
-
-//   const uid = auth().currentUser?.uid;
-
-//   useEffect(() => {
-//     const db    = getFirestore();
-//     const q     = query(collection(db, 'categories'), orderBy('createdAt', 'desc'));
-//     const unsub = onSnapshot(q, (snap) => {
-//       setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-//       setLoading(false);
-//     });
-//     return unsub;
-//   }, []);
-
-//   useEffect(() => {
-//     if (!uid) return;
-//     const db = getFirestore();
-//     const { getDoc, doc } = require('@react-native-firebase/firestore');
-//     getDoc(doc(db, 'users', uid)).then((d) => {
-//       if (d.exists()) setUserName(d.data().name || '');
-//     });
-//   }, [uid]);
-
-//   const filtered = categories.filter((c) =>
-//     c.name?.toLowerCase().includes(search.toLowerCase()),
-//   );
-
-//   const BG_COLORS = [
-//     '#EFF6FF', '#F0FDF4', '#FFF7ED', '#FDF4FF',
-//     '#FFF1F2', '#F0FDFA', '#FFFBEB', '#EEF2FF',
-//   ];
-//   const getBg = (i) => BG_COLORS[i % BG_COLORS.length];
-
-//   const BORDER_COLORS = [
-//     '#BFDBFE', '#BBF7D0', '#FED7AA', '#E9D5FF',
-//     '#FECDD3', '#99F6E4', '#FDE68A', '#C7D2FE',
-//   ];
-//   const getBorder = (i) => BORDER_COLORS[i % BORDER_COLORS.length];
-
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-//       {/* Header */}
-//       <View style={styles.header}>
-//         <View>
-//           <Text style={styles.greeting}>
-//             Namaste {userName ? userName.split(' ')[0] : ''}! 👋
-//           </Text>
-//           <Text style={styles.tagline}>Kaunsi help chahiye aaj?</Text>
-//         </View>
-//         <View style={styles.headerAvatar}>
-//           <Text style={{ fontSize: 20 }}>👤</Text>
-//         </View>
-//       </View>
-
-//       {/* Search */}
-//       <View style={styles.searchWrap}>
-//         <Text style={styles.searchIcon}>🔍</Text>
-//         <TextInput
-//           style={styles.searchInput}
-//           placeholder="Doctor, Lawyer, CA search karo..."
-//           placeholderTextColor="#9CA3AF"
-//           value={search}
-//           onChangeText={setSearch}
-//         />
-//         {search ? (
-//           <TouchableOpacity onPress={() => setSearch('')}>
-//             <Text style={{ fontSize: 16, color: '#94A3B8' }}>✕</Text>
-//           </TouchableOpacity>
-//         ) : null}
-//       </View>
-
-//       <ScrollView showsVerticalScrollIndicator={false}>
-
-//         {/* Banner */}
-//         <View style={styles.banner}>
-//           <View style={{ flex: 1 }}>
-//             <Text style={styles.bannerTitle}>Expert Help</Text>
-//             <Text style={styles.bannerTitle}>at Your Fingertips 🏥</Text>
-//             <Text style={styles.bannerSub}>
-//               Qualified experts se seedha baat karo
-//             </Text>
-//           </View>
-//           <Text style={styles.bannerEmoji}>🩺</Text>
-//         </View>
-
-//         {/* Categories */}
-//         <View style={styles.sectionHeader}>
-//           <Text style={styles.sectionTitle}>Categories</Text>
-//           <Text style={styles.sectionCount}>{filtered.length} available</Text>
-//         </View>
-
-//         {loading ? (
-//           <ActivityIndicator color="#2563EB" style={{ marginTop: 30 }} />
-//         ) : filtered.length === 0 ? (
-//           <View style={styles.empty}>
-//             <Text style={styles.emptyIcon}>🔍</Text>
-//             <Text style={styles.emptyText}>Koi category nahi mili</Text>
-//           </View>
-//         ) : (
-//           <View style={styles.grid}>
-//             {filtered.map((cat, i) => (
-//               <TouchableOpacity
-//                 key={cat.id}
-//                 style={[styles.catCard, {
-//                   backgroundColor: getBg(i),
-//                   borderColor    : getBorder(i),
-//                 }]}
-//                 onPress={() => navigation.navigate('ExpertList', {
-//                   categoryId  : cat.id,
-//                   categoryName: cat.name,
-//                   categoryIcon: cat.icon,
-//                 })}
-//               >
-//                 <Text style={styles.catIcon}>{cat.icon || '📁'}</Text>
-//                 <Text style={styles.catName}>{cat.name}</Text>
-//                 {cat.description ? (
-//                   <Text style={styles.catDesc} numberOfLines={2}>
-//                     {cat.description}
-//                   </Text>
-//                 ) : null}
-//                 <View style={styles.catArrow}>
-//                   <Text style={styles.catArrowText}>Experts dekhein →</Text>
-//                 </View>
-//               </TouchableOpacity>
-//             ))}
-//           </View>
-//         )}
-
-//         <View style={{ height: 30 }} />
-//       </ScrollView>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container    : { flex: 1, backgroundColor: '#F8FAFC' },
-//   header       : {
-//     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-//     backgroundColor: '#FFFFFF', paddingHorizontal: 20,
-//     paddingTop: 55, paddingBottom: 16,
-//     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-//   },
-//   greeting     : { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-//   tagline      : { fontSize: 13, color: '#94A3B8', marginTop: 2 },
-//   headerAvatar : {
-//     width: 42, height: 42, borderRadius: 21,
-//     backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center',
-//   },
-//   searchWrap   : {
-//     flexDirection: 'row', alignItems: 'center',
-//     backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
-//     borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12,
-//     borderWidth: 1, borderColor: '#E2E8F0',
-//     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
-//   },
-//   searchIcon   : { fontSize: 16, marginRight: 8 },
-//   searchInput  : { flex: 1, fontSize: 14, color: '#1E293B' },
-//   banner       : {
-//     flexDirection: 'row', alignItems: 'center',
-//     backgroundColor: '#2563EB', marginHorizontal: 16, marginTop: 16,
-//     borderRadius: 20, padding: 20,
-//   },
-//   bannerTitle  : { fontSize: 18, fontWeight: '800', color: '#FFFFFF', lineHeight: 26 },
-//   bannerSub    : { fontSize: 13, color: '#BFDBFE', marginTop: 6 },
-//   bannerEmoji  : { fontSize: 52 },
-//   sectionHeader: {
-//     flexDirection: 'row', justifyContent: 'space-between',
-//     alignItems: 'center', marginHorizontal: 16, marginTop: 22, marginBottom: 14,
-//   },
-//   sectionTitle : { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-//   sectionCount : { fontSize: 13, color: '#94A3B8' },
-//   grid         : { flexDirection: 'column', paddingHorizontal: 12, gap: 10,width:"100%" },
-//   catCard      : {
-//     width: '90%', borderRadius: 18, padding: 16,
-//     borderWidth: 1.5, alignItems: 'flex-start',
-//   },
-//   catIcon      : { fontSize: 36, marginBottom: 10 },
-//   catName      : { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-//   catDesc      : { fontSize: 12, color: '#64748B', lineHeight: 18, marginBottom: 10 },
-//   catArrow     : { marginTop: 4 },
-//   catArrowText : { fontSize: 12, color: '#2563EB', fontWeight: '600' },
-//   empty        : { alignItems: 'center', paddingTop: 60 },
-//   emptyIcon    : { fontSize: 48, marginBottom: 12 },
-//   emptyText    : { fontSize: 15, color: '#94A3B8' },
-// });
-
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, StatusBar, ActivityIndicator, FlatList,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  TextInput, StatusBar, ActivityIndicator, Animated,
+  Dimensions, Platform,
+  Image,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Feather';
+import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
-  getFirestore, collection, onSnapshot,
-  query, orderBy,
+  getFirestore, collection, onSnapshot, query, orderBy,
+  getDoc, doc,
 } from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 
-const COLORS = {
-  primary: '#0D7B7A',
-  accent: '#14B8A6',
-  lightTeal: '#A7E9E7',
-  background: '#B3E9E6',
-  white: '#FFFFFF',
-  textPrimary: '#0D7B7A',
-  textSecondary: '#80B2B0',
-  border: '#D6F4F2',
-};
+const { width } = Dimensions.get('window');
 
+const CARD_COLORS = [
+  { bg: '#F0FDF4', border: '#86EFAC', icon: '#16A34A' },
+  { bg: '#EFF6FF', border: '#93C5FD', icon: '#2563EB' },
+  { bg: '#FFF7ED', border: '#FDC08A', icon: '#EA580C' },
+  { bg: '#FDF4FF', border: '#E09FFF', icon: '#9333EA' },
+  { bg: '#FFF1F2', border: '#FDA4AF', icon: '#E11D48' },
+  { bg: '#F0FDFA', border: '#5EEAD4', icon: '#0D9488' },
+  { bg: '#FEFCE8', border: '#FDE047', icon: '#CA8A04' },
+  { bg: '#F0F9FF', border: '#7DD3FC', icon: '#0284C7' },
+];
+
+// ── Header component (memoized — never re-renders unless props change) ────────
+const ListHeader = React.memo(({ greeting, firstName, search, onSearch, onClear, searchFocused, onFocus, onBlur, count, fadeAnim, slideAnim }) => (
+  <>
+    {/* Gradient header */}
+    <LinearGradient
+      colors={['#0A4F4E', '#0D7B7A']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.header}
+    >
+      <Animated.View style={[styles.headerTop, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        <View>
+          <Text style={styles.greetingText}>{greeting}</Text>
+          <Text style={styles.greetingName}>{firstName} 👋</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.notifBtn}>
+            <Icon name="bell" size={20} color="rgba(255,255,255,0.85)" />
+            <View style={styles.notifDot} />
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Search */}
+      <Animated.View
+        style={[
+          styles.searchWrap,
+          { opacity: fadeAnim },
+          searchFocused && styles.searchFocused,
+        ]}
+      >
+        <Icon
+          name="search"
+          size={17}
+          color={searchFocused ? '#0D7B7A' : '#94A3B8'}
+          style={{ marginRight: 10 }}
+        />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search doctors, lawyers, CAs…"
+          placeholderTextColor="#9CA3AF"
+          value={search}
+          onChangeText={onSearch}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={onClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Icon name="x" size={16} color="#94A3B8" />
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    </LinearGradient>
+
+    {/* Hero Banner */}
+    <Animated.View style={[styles.bannerWrap, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      <LinearGradient
+        colors={['#0D7B7A', '#14B8A6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.banner}
+      >
+        <View style={styles.bannerLeft}>
+          <View style={styles.bannerBadge}>
+            <Icon name="zap" size={11} color="#FFFFFF" />
+            <Text style={styles.bannerBadgeText}>Quick Connect</Text>
+          </View>
+          <Text style={styles.bannerTitle}>Expert Help,{'\n'}Anytime.</Text>
+          <Text style={styles.bannerSub}>
+            Connect with verified professionals{'\n'}in minutes — not days.
+          </Text>
+          <View style={styles.bannerMetaRow}>
+            <View style={styles.bannerMetaPill}>
+              <Icon name="shield" size={10} color="#0D7B7A" />
+              <Text style={styles.bannerMetaText}>Verified</Text>
+            </View>
+            <View style={styles.bannerMetaPill}>
+              <Icon name="star" size={10} color="#0D7B7A" />
+              <Text style={styles.bannerMetaText}>4.9 Rated</Text>
+            </View>
+            <View style={styles.bannerMetaPill}>
+              <Icon name="clock" size={10} color="#0D7B7A" />
+              <Text style={styles.bannerMetaText}>~5 min reply</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.bannerRight}>
+          <View style={styles.bannerIconCircle}>
+            <MatIcon name="medical-bag" size={46} color="rgba(255,255,255,0.95)" />
+          </View>
+        </View>
+      </LinearGradient>
+    </Animated.View>
+
+    {/* Section label */}
+    <View style={styles.sectionRow}>
+      <View>
+        <Text style={styles.sectionTitle}>Browse Categories</Text>
+        <Text style={styles.sectionSub}>{count} services available</Text>
+      </View>
+      {search.length > 0 && (
+        <TouchableOpacity onPress={onClear} style={styles.clearBtn}>
+          <Icon name="x" size={13} color="#0D7B7A" />
+          <Text style={styles.clearBtnText}>Clear</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  </>
+));
+
+// ── Category row (memoized — key optimization for FlatList) ──────────────────
+const CategoryRow = React.memo(({ item, index, onPress }) => {
+  const palette = CARD_COLORS[index % CARD_COLORS.length];
+  return (
+    <TouchableOpacity
+      style={[styles.catRow, { backgroundColor: palette.bg, borderColor: palette.border }]}
+      onPress={onPress}
+      activeOpacity={0.78}
+    >
+      <View
+        style={[
+          styles.catIconWrap,
+          { backgroundColor: palette.border + '55' },
+        ]}
+      >
+
+        {item.icon ? (
+          <Image
+            source={{ uri: item.icon }}
+            style={styles.catImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Text style={styles.catEmoji}>
+            {'📁'}
+          </Text>
+        )}
+      </View>
+      {/* <View style={[styles.catIconWrap, { backgroundColor: palette.border + '55' }]}>
+        <Text style={styles.catEmoji}>{item.icon || '📁'}</Text>
+      </View> */}
+      <View style={styles.catTextWrap}>
+        <Text style={styles.catName}>{item.name}</Text>
+        {item.description ? (
+          <Text style={styles.catDesc} numberOfLines={2}>{item.description}</Text>
+        ) : null}
+      </View>
+      <View style={[styles.catArrow, { backgroundColor: palette.border }]}>
+        <Icon name="chevron-right" size={15} color={palette.icon} />
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+// ── Main screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [userName, setUserName] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
-  const uid = auth().currentUser?.uid;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
+  const uid = getAuth().currentUser?.uid;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 550, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, tension: 62, friction: 12, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     const db = getFirestore();
@@ -245,318 +213,266 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     if (!uid) return;
-    const db = getFirestore();
-    const { getDoc, doc } = require('@react-native-firebase/firestore');
-    getDoc(doc(db, 'users', uid)).then((d) => {
+    getDoc(doc(getFirestore(), 'users', uid)).then((d) => {
       if (d.exists()) setUserName(d.data().name || '');
     });
   }, [uid]);
 
-  const filtered = categories.filter((c) =>
-    c.name?.toLowerCase().includes(search.toLowerCase()),
+  // ── Derived values (memoized) ──────────────────────────────────────────────
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }, []);
+
+  const firstName = useMemo(
+    () => (userName ? userName.split(' ')[0] : 'there'),
+    [userName],
   );
 
-  const BG_COLORS = [
-    '#E0F9F8', '#D6F4F2', '#CCF0EF', '#E8F8F6',
-    '#F0FFFE', '#D9F5F3', '#E5F7F5', '#F8FDFC',
-  ];
-  const getBg = (i) => BG_COLORS[i % BG_COLORS.length];
+  const filtered = useMemo(
+    () => search.trim()
+      ? categories.filter((c) =>
+        c.name?.toLowerCase().includes(search.toLowerCase()),
+      )
+      : categories,
+    [categories, search],
+  );
 
-  const BORDER_COLORS = [
-    '#A7E9E7', '#99F6E4', '#7EF2E8', '#81F5F0',
-    '#7FEFEA', '#5EEAD4', '#87E8DE', '#5DEAD4',
-  ];
-  const getBorder = (i) => BORDER_COLORS[i % BORDER_COLORS.length];
+  // ── Callbacks (stable references — no re-render churn) ────────────────────
+  const handleSearch = useCallback((t) => setSearch(t), []);
+  const handleClear = useCallback(() => setSearch(''), []);
+  const handleFocus = useCallback(() => setSearchFocused(true), []);
+  const handleBlur = useCallback(() => setSearchFocused(false), []);
+
+  const keyExtractor = useCallback((item) => item.id, []);
+
+  const renderItem = useCallback(({ item, index }) => (
+    <CategoryRow
+      item={item}
+      index={index}
+      onPress={() =>
+        navigation.navigate('ExpertList', {
+          categoryId: item.id,
+          categoryName: item.name,
+          categoryIcon: item.icon,
+        })
+      }
+    />
+  ), [navigation]);
+
+  const getItemLayout = useCallback((_, index) => ({
+    length: 88,     // estimated row height (icon 52 + padding 14*2 + gap ~8)
+    offset: 88 * index,
+    index,
+  }), []);
+
+  const listHeader = useMemo(() => (
+    <ListHeader
+      greeting={greeting}
+      firstName={firstName}
+      search={search}
+      onSearch={handleSearch}
+      onClear={handleClear}
+      searchFocused={searchFocused}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      count={filtered.length}
+      fadeAnim={fadeAnim}
+      slideAnim={slideAnim}
+    />
+  ), [greeting, firstName, search, handleSearch, handleClear, searchFocused,
+    handleFocus, handleBlur, filtered.length, fadeAnim, slideAnim]);
+
+  const listEmpty = useMemo(() => {
+    if (loading) {
+      return (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color="#0D7B7A" />
+          <Text style={styles.loadingText}>Loading categories…</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.empty}>
+        <View style={styles.emptyIconWrap}>
+          <Icon name="search" size={32} color="#0D7B7A" />
+        </View>
+        <Text style={styles.emptyTitle}>No results found</Text>
+        <Text style={styles.emptySub}>Try a different search term</Text>
+      </View>
+    );
+  }, [loading]);
 
   return (
-    <LinearGradient
-      colors={['#A7E9E7', '#B3E9E6']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0A4F4E" translucent />
 
-      {/* Header Card */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>
-              Namaste {userName ? userName.split(' ')[0] : ''}! 👋
-            </Text>
-            <Text style={styles.tagline}>Kaunsi help chahiye aaj?</Text>
-          </View>
-          <TouchableOpacity style={styles.headerAvatar} onPress={() => navigation.navigate('Profile')}>
-            <Text style={{ fontSize: 22 }}>👤</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchWrap}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Doctor, Lawyer, CA search karo..."
-          placeholderTextColor="#80B2B0"
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search ? (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Text style={{ fontSize: 16, color: '#80B2B0' }}>✕</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
-
-        {/* Banner */}
-        <View style={styles.banner}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.bannerTitle}>Expert Help</Text>
-            <Text style={styles.bannerTitle}>at Your Fingertips 🏥</Text>
-            <Text style={styles.bannerSub}>
-              Qualified experts se seedha baat karo
-            </Text>
-          </View>
-          <Text style={styles.bannerEmoji}>🩺</Text>
-        </View>
-
-        {/* Categories */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <Text style={styles.sectionCount}>{filtered.length} available</Text>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color={COLORS.primary} style={{ marginTop: 30 }} />
-        ) : filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>🔍</Text>
-            <Text style={styles.emptyText}>Koi category nahi mili</Text>
-          </View>
-        ) : (
-          <View style={styles.grid}>
-            {filtered.map((cat, i) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[styles.catCard, {
-                  backgroundColor: getBg(i),
-                  borderColor: getBorder(i),
-                }]}
-                onPress={() => navigation.navigate('ExpertList', {
-                  categoryId: cat.id,
-                  categoryName: cat.name,
-                  categoryIcon: cat.icon,
-                })}
-                activeOpacity={0.75}
-              >
-                <View style={styles.catCardTop}>
-                  <Text style={styles.catIcon}>{cat.icon || '📁'}</Text>
-                  <View style={styles.catArrowIcon}>
-                    <Text style={styles.catArrowIconText}>→</Text>
-                  </View>
-                </View>
-                <Text style={styles.catName}>{cat.name}</Text>
-                {cat.description ? (
-                  <Text style={styles.catDesc} numberOfLines={2}>
-                    {cat.description}
-                  </Text>
-                ) : null}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <View style={{ height: 30 }} />
-      </ScrollView>
-    </LinearGradient>
+      <FlatList
+        data={filtered}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        // ── Performance knobs ──────────────────────────────────────────────
+        getItemLayout={getItemLayout}         // skips layout measurement on scroll
+        removeClippedSubviews={Platform.OS === 'android'} // unmount off-screen views on Android
+        initialNumToRender={10}               // render 10 rows on first paint
+        maxToRenderPerBatch={8}               // render 8 rows per JS batch
+        windowSize={7}                        // keep 7 screen-heights in memory
+        updateCellsBatchingPeriod={40}        // batch updates every 40ms
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      />
+    </View>
   );
 }
 
+// ── Styles ─────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    marginTop:50
+  container: { flex: 1, backgroundColor: '#EFF4F4' },
+  listContent: { paddingBottom: 0 },
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  header: {
+    paddingTop: 54,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
   },
-  headerCard: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 12,
-    borderRadius: 24,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  tagline: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  headerAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#F0FFFE',
-    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.border,
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
+  catImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius:10,
+    // borderWidth:1
+  },
+
+  greetingText: { fontSize: 13, color: 'rgba(255,255,255,0.72)', fontWeight: '500', marginBottom: 2 },
+  greetingName: { fontSize: 22, color: '#FFFFFF', fontWeight: '900', letterSpacing: 0.3 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  notifBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+    position: 'relative',
+  },
+  notifDot: {
+    position: 'absolute', top: 8, right: 8,
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: '#F87171', borderWidth: 1.5, borderColor: '#0D7B7A',
+  },
+
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 12,
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    height: 46,
     borderWidth: 1.5,
-    borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    borderColor: 'transparent',
   },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  scrollView: {
-    paddingHorizontal: 0,
-  },
+  searchFocused: { borderColor: '#14B8A6' },
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A', fontWeight: '500', padding: 0 },
+
+  // ── Banner ────────────────────────────────────────────────────────────────
+  bannerWrap: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
   banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    marginHorizontal: 16,
-    marginVertical: 16,
-    borderRadius: 24,
-    padding: 22,
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    borderRadius: 22, padding: 20,
+    flexDirection: 'row', alignItems: 'center',
+    shadowColor: '#0D7B7A', shadowOpacity: 0.28,
+    shadowRadius: 16, shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
-  bannerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.white,
-    lineHeight: 28,
+  bannerLeft: { flex: 1, paddingRight: 10 },
+  bannerBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 20, marginBottom: 10,
   },
-  bannerSub: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 8,
-    fontWeight: '500',
+  bannerBadgeText: { fontSize: 11, color: '#FFFFFF', fontWeight: '700' },
+  bannerTitle: { fontSize: 22, fontWeight: '900', color: '#FFFFFF', lineHeight: 28, marginBottom: 7 },
+  bannerSub: { fontSize: 12, color: 'rgba(255,255,255,0.82)', lineHeight: 18, marginBottom: 12 },
+  bannerMetaRow: { flexDirection: 'row', gap: 6 },
+  bannerMetaPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
-  bannerEmoji: {
-    fontSize: 56,
-    marginLeft: 16,
+  bannerMetaText: { fontSize: 10, fontWeight: '700', color: '#0D7B7A' },
+  bannerRight: { alignItems: 'center', justifyContent: 'center' },
+  bannerIconCircle: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  sectionHeader: {
+
+  // ── Section label ─────────────────────────────────────────────────────────
+  sectionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 14,
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 10,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: COLORS.white,
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  sectionSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  clearBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
   },
-  sectionCount: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '600',
-  },
-  grid: {
+  clearBtnText: { fontSize: 12, color: '#0D7B7A', fontWeight: '700' },
+
+  // ── Category rows ─────────────────────────────────────────────────────────
+  catRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    gap: 12,
-    marginBottom: 12,
-  },
-  catCard: {
-    width: '48%',
-    borderRadius: 20,
-    padding: 18,
+    alignItems: 'center',
+    borderRadius: 18,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 14,
     borderWidth: 1.5,
-    alignItems: 'flex-start',
+    gap: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  catCardTop: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+  catIconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  catIcon: {
-    fontSize: 38,
+  catEmoji: { fontSize: 26 },
+  catTextWrap: { flex: 1 },
+  catName: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 3 },
+  catDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
+  catArrow: {
+    width: 30, height: 30, borderRadius: 15,
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  catArrowIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(13, 123, 122, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  // ── Loading / Empty ───────────────────────────────────────────────────────
+  loadingWrap: { alignItems: 'center', paddingTop: 56, gap: 12 },
+  loadingText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  empty: { alignItems: 'center', paddingTop: 56 },
+  emptyIconWrap: {
+    width: 72, height: 72, borderRadius: 22,
+    backgroundColor: '#F0FDFA',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
   },
-  catArrowIconText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  catName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-  },
-  catDesc: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  emptySub: { fontSize: 13, color: '#94A3B8' },
 });

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Provider }         from 'react-redux';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { store }            from './src/store/store';
 import AppNavigator         from './src/navigation/AppNavigator';
 import messaging            from '@react-native-firebase/messaging';
@@ -12,30 +13,29 @@ import {
   saveFCMToken,
 } from './src/utils/notificationService';
 
-// ✅ Background message handler
+// Background message handler — must be registered before any other listener
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log('📩 Background message handled:', remoteMessage);
+  console.log('📩 Background message received:', remoteMessage);
 });
 
 export default function App() {
   useEffect(() => {
-    // ✅ Permission + Token setup
+    // Request notification permission and register FCM token
     requestNotificationPermission();
 
-    // ✅ Foreground
+    // Foreground notification listener
     const unsubForeground = setupForegroundNotification();
 
-    // ✅ Background/Quit
+    // Background / quit-state notification handler
     setupBackgroundNotification();
 
-    // ✅ Token Refresh
+    // Refresh FCM token whenever it rotates
     const unsubRefresh = setupTokenRefresh();
 
-    // ✅ Jab bhi user login kare — token save karo
+    // Save a fresh FCM token each time the user signs in
     const unsubAuth = auth().onAuthStateChanged((user) => {
       if (user) {
-        console.log('👤 User logged in:', user.email);
-        // Token save karo login ke baad
+        console.log('👤 User authenticated:', user.email);
         setTimeout(() => saveFCMToken(), 2000);
       }
     });
@@ -49,7 +49,9 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <AppNavigator />
+      <SafeAreaProvider>
+        <AppNavigator />
+      </SafeAreaProvider>
     </Provider>
   );
 }

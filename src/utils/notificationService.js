@@ -87,11 +87,11 @@ export const setupForegroundNotification = () => {
   const unsubscribe = messaging().onMessage(async (remoteMessage) => {
     console.log('📩 Foreground notification received:', remoteMessage);
 
-    Alert.alert(
-      remoteMessage.notification?.title || '🔔 New Notification',
-      remoteMessage.notification?.body  || '',
-      [{ text: 'OK', style: 'default' }],
-    );
+    // Alert.alert(
+    //   remoteMessage.notification?.title || '🔔 New Notification',
+    //   remoteMessage.notification?.body  || '',
+    //   [{ text: 'OK', style: 'default' }],
+    // );
   });
   return unsubscribe;
 };

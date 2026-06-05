@@ -1,291 +1,4 @@
-// import React, { useEffect, useState } from 'react';
-// import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-// import firestore from '@react-native-firebase/firestore';
-// import auth from '@react-native-firebase/auth';
-// import { useDispatch } from 'react-redux';
-// import { logout } from '../../store/slices/authSlice';
-
-// export default function AdminDashboard() {
-//   const dispatch = useDispatch();
-//   const [counts, setCounts] = useState({ users: 0, experts: 0, categories: 0, chats: 0 });
-
-//   useEffect(() => {
-//     const fetchCounts = async () => {
-//       const [users, experts, categories, chats] = await Promise.all([
-//         firestore().collection('users').where('role', '==', 'user').get(),
-//         firestore().collection('users').where('role', '==', 'expert').get(),
-//         firestore().collection('categories').get(),
-//         firestore().collection('chats').get(),
-//       ]);
-//       setCounts({
-//         users     : users.size,
-//         experts   : experts.size,
-//         categories: categories.size,
-//         chats     : chats.size,
-//       });
-//     };
-//     fetchCounts();
-//   }, []);
-
-//   const handleLogout = async () => {
-//     await auth().signOut();
-//     dispatch(logout());
-//   };
-
-//   const cards = [
-//     { label: 'Total Users',      value: counts.users,      emoji: '👥', color: '#DBEAFE' },
-//     { label: 'Total Experts',    value: counts.experts,    emoji: '👨‍⚕️', color: '#D1FAE5' },
-//     { label: 'Categories',       value: counts.categories, emoji: '📂', color: '#FEF3C7' },
-//     { label: 'Active Chats',     value: counts.chats,      emoji: '💬', color: '#FCE7F3' },
-//   ];
-
-//   return (
-//     <ScrollView style={styles.container}>
-//       <View style={styles.header}>
-//         <Text style={styles.title}>Admin Dashboard</Text>
-//         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-//           <Text style={styles.logoutText}>Logout</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       <View style={styles.grid}>
-//         {cards.map((card) => (
-//           <View key={card.label} style={[styles.card, { backgroundColor: card.color }]}>
-//             <Text style={styles.cardEmoji}>{card.emoji}</Text>
-//             <Text style={styles.cardValue}>{card.value}</Text>
-//             <Text style={styles.cardLabel}>{card.label}</Text>
-//           </View>
-//         ))}
-//       </View>
-//     </ScrollView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container : { flex: 1, backgroundColor: '#F9FAFB', padding: 20 },
-//   header    : { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 10 },
-//   title     : { fontSize: 22, fontWeight: '700', color: '#111827' },
-//   logoutBtn : { backgroundColor: '#FEE2E2', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-//   logoutText: { color: '#DC2626', fontWeight: '600' },
-//   grid      : { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-//   card      : { width: '47%', borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center' },
-//   cardEmoji : { fontSize: 32, marginBottom: 8 },
-//   cardValue : { fontSize: 28, fontWeight: '700', color: '#111827' },
-//   cardLabel : { fontSize: 13, color: '#6B7280', marginTop: 4, textAlign: 'center' },
-// });
-
-
-// import React, { useEffect, useState } from 'react';
-// import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-// import firestore from '@react-native-firebase/firestore';
-// import auth from '@react-native-firebase/auth';
-// import { useDispatch } from 'react-redux';
-// import { logout } from '../../store/slices/authSlice';
-
-// export default function AdminDashboard() {
-//   const dispatch = useDispatch();
-//   const [counts, setCounts] = useState({ users: 0, experts: 0, categories: 0, chats: 0 });
-
-//   useEffect(() => {
-//     const fetchCounts = async () => {
-//       const [users, experts, categories, chats] = await Promise.all([
-//         firestore().collection('users').where('role', '==', 'user').get(),
-//         firestore().collection('users').where('role', '==', 'expert').get(),
-//         firestore().collection('categories').get(),
-//         firestore().collection('chats').get(),
-//       ]);
-//       setCounts({
-//         users     : users.size,
-//         experts   : experts.size,
-//         categories: categories.size,
-//         chats     : chats.size,
-//       });
-//     };
-//     fetchCounts();
-//   }, []);
-
-//   const handleLogout = async () => {
-//     await auth().signOut();
-//     dispatch(logout());
-//   };
-
-//   const cards = [
-//     { label: 'Total Users',      value: counts.users,      emoji: '👥', color: '#DBEAFE' },
-//     { label: 'Total Experts',    value: counts.experts,    emoji: '👨‍⚕️', color: '#D1FAE5' },
-//     { label: 'Categories',       value: counts.categories, emoji: '📂', color: '#FEF3C7' },
-//     { label: 'Active Chats',     value: counts.chats,      emoji: '💬', color: '#FCE7F3' },
-//   ];
-
-//   return (
-//     <ScrollView style={styles.container}>
-//       <View style={styles.header}>
-//         <Text style={styles.title}>Admin Dashboard</Text>
-//         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-//           <Text style={styles.logoutText}>Logout</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       <View style={styles.grid}>
-//         {cards.map((card) => (
-//           <View key={card.label} style={[styles.card, { backgroundColor: card.color }]}>
-//             <Text style={styles.cardEmoji}>{card.emoji}</Text>
-//             <Text style={styles.cardValue}>{card.value}</Text>
-//             <Text style={styles.cardLabel}>{card.label}</Text>
-//           </View>
-//         ))}
-//       </View>
-//     </ScrollView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container : { flex: 1, backgroundColor: '#F9FAFB', padding: 20 },
-//   header    : { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 10 },
-//   title     : { fontSize: 22, fontWeight: '700', color: '#111827' },
-//   logoutBtn : { backgroundColor: '#FEE2E2', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-//   logoutText: { color: '#DC2626', fontWeight: '600' },
-//   grid      : { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-//   card      : { width: '47%', borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center' },
-//   cardEmoji : { fontSize: 32, marginBottom: 8 },
-//   cardValue : { fontSize: 28, fontWeight: '700', color: '#111827' },
-//   cardLabel : { fontSize: 13, color: '#6B7280', marginTop: 4, textAlign: 'center' },
-// });
-
-// import React, { useEffect, useState } from 'react';
-// import {
-//   View, Text, StyleSheet, ScrollView,
-//   TouchableOpacity, StatusBar, ActivityIndicator,
-// } from 'react-native';
-// import { getAuth, signOut } from '@react-native-firebase/auth';
-// import { getFirestore, collection, query, where, getDocs } from '@react-native-firebase/firestore';
-// import { useDispatch } from 'react-redux';
-// import { logout } from '../../store/slices/authSlice';
-
-// export default function AdminDashboard() {
-//   const dispatch = useDispatch();
-//   const [counts, setCounts]   = useState({ users: 0, experts: 0, categories: 0, chats: 0 });
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const fetchCounts = async () => {
-//       const db = getFirestore();
-//       const [u, e, c, ch] = await Promise.all([
-//         getDocs(query(collection(db, 'users'),      where('role', '==', 'user'))),
-//         getDocs(query(collection(db, 'users'),      where('role', '==', 'expert'))),
-//         getDocs(collection(db, 'categories')),
-//         getDocs(collection(db, 'chats')),
-//       ]);
-//       setCounts({ users: u.size, experts: e.size, categories: c.size, chats: ch.size });
-//       setLoading(false);
-//     };
-//     fetchCounts();
-//   }, []);
-
-//   const handleLogout = async () => {
-//     await signOut(getAuth());
-//     dispatch(logout());
-//   };
-
-//   const cards = [
-//     { label: 'Total Users',   value: counts.users,      icon: '👥', bg: '#EFF6FF', accent: '#2563EB' },
-//     { label: 'Experts',       value: counts.experts,    icon: '🩺', bg: '#F0FDF4', accent: '#16A34A' },
-//     { label: 'Categories',    value: counts.categories, icon: '📂', bg: '#FFFBEB', accent: '#D97706' },
-//     { label: 'Active Chats',  value: counts.chats,      icon: '💬', bg: '#FDF4FF', accent: '#9333EA' },
-//   ];
-
-//   const menuItems = [
-//     { label: 'Manage Categories', icon: '📂', screen: 'Categories', color: '#FEF3C7', border: '#F59E0B' },
-//     { label: 'Manage Experts',    icon: '🩺', screen: 'Experts',    color: '#D1FAE5', border: '#10B981' },
-//     { label: 'Manage Users',      icon: '👥', screen: 'Users',      color: '#DBEAFE', border: '#3B82F6' },
-//     { label: 'View All Chats',    icon: '💬', screen: 'Chats',      color: '#EDE9FE', border: '#8B5CF6' },
-//   ];
-
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-
-//       {/* Header */}
-//       <View style={styles.header}>
-//         <View>
-//           <Text style={styles.greeting}>Good day, Admin 👋</Text>
-//           <Text style={styles.subtitle}>Community Advisory Platform</Text>
-//         </View>
-//         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-//           <Text style={styles.logoutText}>Logout</Text>
-//         </TouchableOpacity>
-//       </View>
-
-//       <ScrollView showsVerticalScrollIndicator={false}>
-
-//         {/* Stats */}
-//         <Text style={styles.sectionTitle}>Overview</Text>
-//         {loading ? (
-//           <ActivityIndicator color="#2563EB" style={{ marginVertical: 24 }} />
-//         ) : (
-//           <View style={styles.grid}>
-//             {cards.map((card) => (
-//               <View key={card.label} style={[styles.statCard, { backgroundColor: card.bg }]}>
-//                 <Text style={styles.statIcon}>{card.icon}</Text>
-//                 <Text style={[styles.statValue, { color: card.accent }]}>{card.value}</Text>
-//                 <Text style={styles.statLabel}>{card.label}</Text>
-//               </View>
-//             ))}
-//           </View>
-//         )}
-
-//         {/* Quick Actions */}
-//         <Text style={styles.sectionTitle}>Quick Actions</Text>
-//         <View style={styles.menuGrid}>
-//           {menuItems.map((item) => (
-//             <TouchableOpacity
-//               key={item.label}
-//               style={[styles.menuCard, { backgroundColor: item.color, borderLeftColor: item.border }]}
-//             >
-//               <Text style={styles.menuIcon}>{item.icon}</Text>
-//               <Text style={styles.menuLabel}>{item.label}</Text>
-//               <Text style={styles.menuArrow}>→</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         <View style={{ height: 30 }} />
-//       </ScrollView>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container   : { flex: 1, backgroundColor: '#F8FAFC' },
-//   header      : {
-//     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-//     paddingHorizontal: 20, paddingTop: 55, paddingBottom: 20,
-//     backgroundColor: '#FFFFFF',
-//     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-//   },
-//   greeting    : { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-//   subtitle    : { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-//   logoutBtn   : { backgroundColor: '#FEE2E2', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
-//   logoutText  : { color: '#DC2626', fontWeight: '600', fontSize: 13 },
-//   sectionTitle: { fontSize: 13, fontWeight: '700', color: '#94A3B8', letterSpacing: 1, marginLeft: 20, marginTop: 24, marginBottom: 12, textTransform: 'uppercase' },
-//   grid        : { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10 },
-//   statCard    : { width: '47%', borderRadius: 16, padding: 18, alignItems: 'flex-start' },
-//   statIcon    : { fontSize: 28, marginBottom: 10 },
-//   statValue   : { fontSize: 30, fontWeight: '800' },
-//   statLabel   : { fontSize: 12, color: '#64748B', marginTop: 4 },
-//   menuGrid    : { paddingHorizontal: 20, gap: 10 },
-//   menuCard    : {
-//     flexDirection: 'row', alignItems: 'center',
-//     borderRadius: 14, padding: 16,
-//     borderLeftWidth: 4,
-//   },
-//   menuIcon    : { fontSize: 22, marginRight: 14 },
-//   menuLabel   : { flex: 1, fontSize: 15, fontWeight: '600', color: '#1E293B' },
-//   menuArrow   : { fontSize: 18, color: '#94A3B8' },
-// });
-
-
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -294,30 +7,158 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import { getAuth, signOut } from '@react-native-firebase/auth';
+import { useSafeAreaInsets }                              from 'react-native-safe-area-context';
+import { getAuth, signOut }                               from '@react-native-firebase/auth';
 import { getFirestore, collection, query, where, getDocs } from '@react-native-firebase/firestore';
-import { useDispatch } from 'react-redux';
-import { logout } from '../../store/slices/authSlice';
+import { useDispatch }                                    from 'react-redux';
+import Icon    from 'react-native-vector-icons/Feather';
+import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { logout }                                         from '../../store/slices/authSlice';
+
+// ── Design tokens — shared with navigators ────────────────────────────────────
 
 const COLORS = {
-  primary: '#0D7B7A',
-  accent: '#14B8A6',
-  lightTeal: '#A7E9E7',
-  background: '#B3E9E6',
-  white: '#FFFFFF',
-  textPrimary: '#0D7B7A',
-  textSecondary: '#80B2B0',
+  primary    : '#0D7B7A',
+  primaryLight: '#F0FDFA',
+  primaryBorder:'#E0F2F1',
+  inactive   : '#94A3B8',
+  surface    : '#FFFFFF',
+  background : '#F4FAFA',
+  textPrimary: '#0F172A',
+  textSub    : '#64748B',
+  danger     : '#DC2626',
+  dangerBg   : '#FEE2E2',
+  shadow     : '#0D7B7A',
 };
 
-export default function AdminDashboard() {
-  const dispatch = useDispatch();
-  const [counts, setCounts] = useState({ users: 0, experts: 0, categories: 0, chats: 0 });
-  const [loading, setLoading] = useState(true);
+// ── Static data — defined outside component to avoid recreation on re-render ──
 
-  useEffect(() => {
-    const fetchCounts = async () => {
+const STAT_CARDS = [
+  {
+    key    : 'users',
+    label  : 'Total Users',
+    iconLib: 'feather',
+    icon   : 'users',
+    accent : '#0D7B7A',
+    bg     : '#F0FDFA',
+  },
+  {
+    key    : 'experts',
+    label  : 'Experts',
+    iconLib: 'mat',
+    icon   : 'stethoscope',
+    accent : '#0369A1',
+    bg     : '#F0F9FF',
+  },
+  {
+    key    : 'categories',
+    label  : 'Categories',
+    iconLib: 'mat',
+    icon   : 'shape-outline',
+    accent : '#B45309',
+    bg     : '#FFFBEB',
+  },
+  {
+    key    : 'chats',
+    label  : 'Active Chats',
+    iconLib: 'mat',
+    icon   : 'chat-outline',
+    accent : '#7C3AED',
+    bg     : '#F5F3FF',
+  },
+];
+
+const MENU_ITEMS = [
+  {
+    key    : 'Categories',
+    label  : 'Manage Categories',
+    iconLib: 'mat',
+    icon   : 'shape-outline',
+    accent : '#B45309',
+    bg     : '#FFFBEB',
+  },
+  {
+    key    : 'Experts',
+    label  : 'Manage Experts',
+    iconLib: 'mat',
+    icon   : 'stethoscope',
+    accent : '#0369A1',
+    bg     : '#F0F9FF',
+  },
+  {
+    key    : 'Users',
+    label  : 'Manage Users',
+    iconLib: 'feather',
+    icon   : 'users',
+    accent : '#0D7B7A',
+    bg     : '#F0FDFA',
+  },
+  {
+    key    : 'Chats',
+    label  : 'View All Chats',
+    iconLib: 'mat',
+    icon   : 'chat-outline',
+    accent : '#7C3AED',
+    bg     : '#F5F3FF',
+  },
+];
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+const renderIcon = (iconLib, icon, size, color) =>
+  iconLib === 'feather'
+    ? <Icon    name={icon} size={size} color={color} />
+    : <MatIcon name={icon} size={size} color={color} />;
+
+// Skeleton pulse card shown while data loads
+const SkeletonCard = memo(() => (
+  <View style={styles.skeletonCard}>
+    <View style={styles.skeletonCircle} />
+    <View style={styles.skeletonLine} />
+    <View style={[styles.skeletonLine, styles.skeletonLineShort]} />
+  </View>
+));
+
+const StatCard = memo(({ card, value }) => (
+  <View style={[styles.statCard, { backgroundColor: card.bg }]}>
+    <View style={[styles.statIconWrap, { backgroundColor: card.accent + '18' }]}>
+      {renderIcon(card.iconLib, card.icon, 22, card.accent)}
+    </View>
+    <Text style={[styles.statValue, { color: card.accent }]}>{value}</Text>
+    <Text style={styles.statLabel}>{card.label}</Text>
+  </View>
+));
+
+const ActionCard = memo(({ item, onPress }) => (
+  <TouchableOpacity
+    style={styles.actionCard}
+    onPress={onPress}
+    activeOpacity={0.75}
+  >
+    <View style={[styles.actionIconWrap, { backgroundColor: item.bg }]}>
+      {renderIcon(item.iconLib, item.icon, 20, item.accent)}
+    </View>
+    <Text style={styles.actionLabel}>{item.label}</Text>
+    <Icon name="chevron-right" size={18} color={COLORS.inactive} />
+  </TouchableOpacity>
+));
+
+// ── Main screen ───────────────────────────────────────────────────────────────
+
+export default function AdminDashboard({ navigation }) {
+  const dispatch = useDispatch();
+  const insets   = useSafeAreaInsets();
+
+  const [counts,  setCounts]  = useState({ users: 0, experts: 0, categories: 0, chats: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(false);
+
+  const fetchCounts = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
       const db = getFirestore();
       const [u, e, c, ch] = await Promise.all([
         getDocs(query(collection(db, 'users'), where('role', '==', 'user'))),
@@ -325,242 +166,344 @@ export default function AdminDashboard() {
         getDocs(collection(db, 'categories')),
         getDocs(collection(db, 'chats')),
       ]);
-      setCounts({ users: u.size, experts: e.size, categories: c.size, chats: ch.size });
+      setCounts({
+        users     : u.size,
+        experts   : e.size,
+        categories: c.size,
+        chats     : ch.size,
+      });
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setError(true);
+    } finally {
       setLoading(false);
-    };
-    fetchCounts();
+    }
   }, []);
 
-  const handleLogout = async () => {
-    await signOut(getAuth());
-    dispatch(logout());
-  };
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts]);
 
-  const cards = [
-    { label: 'Total Users', value: counts.users, icon: '👥' },
-    { label: 'Experts', value: counts.experts, icon: '🩺' },
-    { label: 'Categories', value: counts.categories, icon: '📂' },
-    { label: 'Active Chats', value: counts.chats, icon: '💬' },
-  ];
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(getAuth());
+      dispatch(logout());
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  }, [dispatch]);
 
-  const menuItems = [
-    { label: 'Manage Categories', icon: '📂', screen: 'Categories' },
-    { label: 'Manage Experts', icon: '🩺', screen: 'Experts' },
-    { label: 'Manage Users', icon: '👥', screen: 'Users' },
-    { label: 'View All Chats', icon: '💬', screen: 'Chats' },
-  ];
+  const handleNavigate = useCallback(
+    (screen) => navigation.navigate(screen),
+    [navigation],
+  );
+
+  const headerPaddingTop = Platform.OS === 'ios'
+    ? insets.top + 12
+    : insets.top + 16;
 
   return (
-    <LinearGradient
-      colors={[COLORS.lightTeal, COLORS.background]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.lightTeal} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      {/* Header Card */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerContent}>
-          <Text style={styles.greeting}>Good day, Admin</Text>
-          <Text style={styles.subtitle}>Community Advisory Platform</Text>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <View style={[styles.header, { paddingTop: headerPaddingTop }]}>
+        <View style={styles.headerLeft}>
+          <View style={styles.avatarBadge}>
+            <Icon name="shield" size={16} color={COLORS.primary} />
+          </View>
+          <View>
+            <Text style={styles.greeting}>Admin Dashboard</Text>
+            <Text style={styles.subtitle}>Community Advisory Platform</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={handleLogout}
+          activeOpacity={0.8}
+        >
+          <Icon name="log-out" size={14} color={COLORS.danger} style={{ marginRight: 5 }} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Decorative Shape */}
-        <View style={styles.decoration} />
+      {/* ── Divider ────────────────────────────────────────────────────── */}
+      <View style={styles.headerDivider} />
 
-        {/* Overview Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          {loading ? (
-            <ActivityIndicator color={COLORS.primary} size="large" style={{ marginVertical: 24 }} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 100 },
+        ]}
+      >
+
+        {/* ── Stats overview ──────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MatIcon name="chart-box-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Overview</Text>
+          </View>
+
+          {error ? (
+            // Error state with retry
+            <View style={styles.errorBox}>
+              <Icon name="wifi-off" size={28} color={COLORS.inactive} />
+              <Text style={styles.errorText}>Failed to load data</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={fetchCounts}>
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={styles.statsGrid}>
-              {cards.map((card) => (
-                <View key={card.label} style={styles.statCard}>
-                  <Text style={styles.statIcon}>{card.icon}</Text>
-                  <Text style={styles.statValue}>{card.value}</Text>
-                  <Text style={styles.statLabel}>{card.label}</Text>
-                </View>
-              ))}
+              {STAT_CARDS.map((card) =>
+                loading ? (
+                  <SkeletonCard key={card.key} />
+                ) : (
+                  <StatCard
+                    key={card.key}
+                    card={card}
+                    value={counts[card.key]}
+                  />
+                ),
+              )}
             </View>
           )}
         </View>
 
-        {/* Quick Actions Section */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsContainer}>
-            {menuItems.map((item) => (
-              <TouchableOpacity key={item.label} style={styles.actionCard}>
-                <View style={styles.actionIconBox}>
-                  <Text style={styles.actionIcon}>{item.icon}</Text>
-                </View>
-                <View style={styles.actionContent}>
-                  <Text style={styles.actionLabel}>{item.label}</Text>
-                  <Text style={styles.actionArrow}>→</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+        {/* ── Quick actions ───────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MatIcon name="lightning-bolt-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
           </View>
+
+          {MENU_ITEMS.map((item) => (
+            <ActionCard
+              key={item.key}
+              item={item}
+              onPress={() => handleNavigate(item.key)}
+            />
+          ))}
         </View>
 
-        <View style={{ height: 40 }} />
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex           : 1,
+    backgroundColor: COLORS.background,
   },
-  headerCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 24,
-    backgroundColor: COLORS.white,
-    borderRadius: 28,
+
+  // Header
+  header: {
+    flexDirection    : 'row',
+    justifyContent   : 'space-between',
+    alignItems       : 'center',
+    backgroundColor  : COLORS.surface,
     paddingHorizontal: 20,
-    paddingVertical: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    paddingBottom    : 16,
   },
-  headerContent: {
-    flex: 1,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems   : 'center',
+  },
+  avatarBadge: {
+    width          : 36,
+    height         : 36,
+    borderRadius   : 12,
+    backgroundColor: COLORS.primaryLight,
+    alignItems     : 'center',
+    justifyContent : 'center',
+    marginRight    : 12,
+    borderWidth    : 1,
+    borderColor    : COLORS.primaryBorder,
   },
   greeting: {
-    fontSize: 22,
+    fontSize  : 16,
     fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
+    color     : COLORS.textPrimary,
   },
   subtitle: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    fontSize  : 11,
+    color     : COLORS.inactive,
+    marginTop : 2,
     fontWeight: '500',
   },
   logoutBtn: {
-    backgroundColor: '#FEE9E6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
+    flexDirection   : 'row',
+    alignItems      : 'center',
+    backgroundColor : COLORS.dangerBg,
+    paddingHorizontal: 12,
+    paddingVertical : 8,
+    borderRadius    : 20,
   },
   logoutText: {
-    color: '#D95C50',
+    color     : COLORS.danger,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize  : 12,
   },
+  headerDivider: {
+    height         : 1,
+    backgroundColor: COLORS.primaryBorder,
+  },
+
+  // Scroll
   scrollContent: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingTop       : 20,
   },
-  decoration: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    top: -40,
-    right: -40,
+
+  // Section
+  section: {
+    marginBottom: 24,
   },
-  sectionContainer: {
-    marginBottom: 28,
+  sectionHeader: {
+    flexDirection : 'row',
+    alignItems    : 'center',
+    marginBottom  : 14,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.white,
-    marginBottom: 16,
-    letterSpacing: 0.5,
+    fontSize     : 13,
+    fontWeight   : '700',
+    color        : COLORS.primary,
+    marginLeft   : 6,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
+
+  // Stat cards — 2-column grid without gap (Android compat)
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    flexDirection : 'row',
+    flexWrap      : 'wrap',
+    justifyContent: 'space-between',
   },
   statCard: {
-    width: '48%',
-    backgroundColor: COLORS.white,
-    borderRadius: 24,
-    paddingVertical: 20,
+    width        : '48.5%',
+    borderRadius : 18,
+    paddingVertical  : 18,
     paddingHorizontal: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    alignItems   : 'flex-start',
+    marginBottom : 12,
+    // iOS shadow
+    shadowColor  : '#000',
+    shadowOpacity: 0.06,
+    shadowRadius : 10,
+    shadowOffset : { width: 0, height: 4 },
+    // Android
+    elevation    : 3,
   },
-  statIcon: {
-    fontSize: 32,
-    marginBottom: 10,
+  statIconWrap: {
+    width         : 40,
+    height        : 40,
+    borderRadius  : 12,
+    alignItems    : 'center',
+    justifyContent: 'center',
+    marginBottom  : 12,
   },
   statValue: {
-    fontSize: 28,
+    fontSize  : 28,
     fontWeight: '800',
-    color: COLORS.primary,
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+    fontSize  : 11,
+    color     : COLORS.textSub,
     fontWeight: '600',
-    textAlign: 'center',
   },
-  actionsContainer: {
-    gap: 12,
+
+  // Skeleton
+  skeletonCard: {
+    width        : '48.5%',
+    borderRadius : 18,
+    paddingVertical  : 18,
+    paddingHorizontal: 14,
+    marginBottom : 12,
+    backgroundColor: '#E8F5F5',
+    elevation    : 0,
   },
+  skeletonCircle: {
+    width          : 40,
+    height         : 40,
+    borderRadius   : 12,
+    backgroundColor: '#C8E6E5',
+    marginBottom   : 12,
+  },
+  skeletonLine: {
+    height         : 14,
+    borderRadius   : 6,
+    backgroundColor: '#C8E6E5',
+    marginBottom   : 8,
+    width          : '70%',
+  },
+  skeletonLineShort: {
+    width: '50%',
+  },
+
+  // Error state
+  errorBox: {
+    alignItems    : 'center',
+    paddingVertical: 32,
+    backgroundColor: COLORS.surface,
+    borderRadius  : 18,
+    marginBottom  : 12,
+  },
+  errorText: {
+    color     : COLORS.textSub,
+    fontSize  : 14,
+    fontWeight: '600',
+    marginTop : 10,
+    marginBottom: 16,
+  },
+  retryBtn: {
+    backgroundColor : COLORS.primaryLight,
+    paddingHorizontal: 24,
+    paddingVertical : 10,
+    borderRadius    : 20,
+    borderWidth     : 1,
+    borderColor     : COLORS.primaryBorder,
+  },
+  retryText: {
+    color     : COLORS.primary,
+    fontWeight: '700',
+    fontSize  : 13,
+  },
+
+  // Action cards
   actionCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    paddingVertical: 16,
+    flexDirection    : 'row',
+    alignItems       : 'center',
+    backgroundColor  : COLORS.surface,
+    borderRadius     : 16,
+    paddingVertical  : 14,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom     : 10,
+    // iOS shadow
+    shadowColor  : COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius : 10,
+    shadowOffset : { width: 0, height: 3 },
+    // Android
+    elevation    : 2,
   },
-  actionIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#F0FFFE',
-    alignItems: 'center',
+  actionIconWrap: {
+    width         : 42,
+    height        : 42,
+    borderRadius  : 13,
+    alignItems    : 'center',
     justifyContent: 'center',
-    marginRight: 14,
-  },
-  actionIcon: {
-    fontSize: 24,
-  },
-  actionContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginRight   : 14,
   },
   actionLabel: {
-    fontSize: 15,
+    flex      : 1,
+    fontSize  : 14,
     fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  actionArrow: {
-    fontSize: 18,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
+    color     : COLORS.textPrimary,
   },
 });
