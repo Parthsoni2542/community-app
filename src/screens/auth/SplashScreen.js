@@ -5,176 +5,212 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Image,
+  StatusBar,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import Icon from 'react-native-vector-icons/Feather';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
-// shared theme
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function SplashScreen({ navigation }) {
-  const logoScale = useRef(new Animated.Value(0.4)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const loaderOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale    = useRef(new Animated.Value(0.5)).current;
+  const logoOpacity  = useRef(new Animated.Value(0)).current;
+  const textOpacity  = useRef(new Animated.Value(0)).current;
+  const dotOpacity   = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
       // Logo pops in
       Animated.parallel([
-        Animated.spring(logoScale, { toValue: 1, tension: 70, friction: 9, useNativeDriver: true }),
-        Animated.timing(logoOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 65,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 450,
+          useNativeDriver: true,
+        }),
       ]),
-      // Title fades in
-      Animated.timing(titleOpacity, { toValue: 1, duration: 400, delay: 80, useNativeDriver: true }),
-      // Tagline + loader fade in together
-      Animated.parallel([
-        Animated.timing(taglineOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(loaderOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-      ]),
+      // Text slides up & fades in
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 380,
+        delay: 60,
+        useNativeDriver: true,
+      }),
+      // Dots appear
+      Animated.timing(dotOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
     ]).start();
 
-    // Route to the appropriate screen after splash duration
     const timer = setTimeout(() => {
       navigation?.replace('Login');
-    }, 2800);
+    }, 2600);
 
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <LinearGradient
-      colors={['#0A4F4E', '#0D7B7A', '#14B8A6']}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={styles.container}
-    >
-      {/* Decorative background circles — same as LoginScreen */}
-      <View style={styles.bgCircle1} />
-      <View style={styles.bgCircle2} />
-      <View style={styles.bgCircle3} />
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Logo */}
-      <Animated.View style={[styles.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
-        <View style={styles.logoCircle}>
-          <Icon name="activity" size={38} color={Colors.accent} />
-        </View>
-      </Animated.View>
+      {/* Subtle bg shapes — very light, not distracting */}
+      <View style={styles.shapeTL} />
+      <View style={styles.shapeBR} />
 
-      {/* Brand name */}
-      <Animated.Text style={[styles.brandName, { opacity: titleOpacity }]}>
-        ExpertConnect
-      </Animated.Text>
+      {/* Center content */}
+      <View style={styles.centerContent}>
 
-      {/* Tagline */}
-      <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
-        Your wellness community
-      </Animated.Text>
+        {/* Logo */}
+        <Animated.View style={[
+          styles.logoWrap,
+          { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+        ]}>
+          <Image
+            style={styles.logo}
+            resizeMode="contain"
+            source={require('../../asserts/image/Logo.png')}
+          />
+        </Animated.View>
 
-      {/* Dot loader */}
-      <Animated.View style={[styles.dotRow, { opacity: loaderOpacity }]}>
-        <DotPulse delay={0} />
-        <DotPulse delay={200} />
-        <DotPulse delay={400} />
-      </Animated.View>
+        {/* Brand text */}
+        <Animated.View style={{ opacity: textOpacity, alignItems: 'center' }}>
+          <Text style={styles.brandName}>Kapol Setu</Text>
+          <Text style={styles.taglineGuj}>સેવા · સહકાર · સંસ્કાર</Text>
+          <Text style={styles.taglineEng}>Your wellness community</Text>
+        </Animated.View>
+
+        {/* Loading indicator — pill + dots */}
+        <Animated.View style={[styles.dotsRow, { opacity: dotOpacity }]}>
+          <View style={[styles.dot, styles.dotActive]} />
+          <View style={[styles.dot, styles.dotPill]} />
+          <View style={[styles.dot, styles.dotFaint]} />
+        </Animated.View>
+      </View>
 
       {/* Bottom label */}
-      <Animated.Text style={[styles.bottomLabel, { opacity: taglineOpacity }]}>
-        Expert help at your fingertips
-      </Animated.Text>
-    </LinearGradient>
+      <Text style={styles.bottomLabel}>Powered by Kapol Setu</Text>
+    </View>
   );
 }
-
-/** Animated pulsing dot for the loading indicator */
-const DotPulse = React.memo(({ delay }) => {
-  const scale = useRef(new Animated.Value(0.6)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 1, duration: 500, delay, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 0.6, duration: 500, useNativeDriver: true }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.dot, { transform: [{ scale }] }]} />
-  );
-});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Background decorations — identical to LoginScreen for visual continuity
-  bgCircle1: {
-    position: 'absolute', width: 280, height: 280, borderRadius: 140,
-    backgroundColor: 'rgba(255,255,255,0.04)', top: -60, right: -80,
+  // ── Subtle background shapes ──────────────
+  shapeTL: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#F0F4FF',   // very light blue
+    top: -100,
+    right: -100,
   },
-  bgCircle2: {
-    position: 'absolute', width: 180, height: 180, borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.06)', top: '30%', left: -60,
-  },
-  bgCircle3: {
-    position: 'absolute', width: 220, height: 220, borderRadius: 110,
-    backgroundColor: 'rgba(20,184,166,0.12)', bottom: 40, right: -40,
+  shapeBR: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#FFF4EC',   // very light orange
+    bottom: -60,
+    left: -60,
   },
 
+  // ── Center section ────────────────────────
+  centerContent: {
+    alignItems: 'center',
+    gap: 0,
+  },
+
+  // ── Logo ─────────────────────────────────
   logoWrap: {
-    marginBottom: 24,
-  },
-  logoCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.22)',
-    justifyContent: 'center',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#FFFFFF',
+    // Soft blue ring — brand subtle
+    borderWidth: 2,
+    borderColor: '#E8EDFA',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+    // Shadow for depth on white bg
+    shadowColor: '#1E3FA3',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
-  brandName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.65)',
-    fontWeight: '500',
-    marginBottom: 40,
+  logo: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
 
-  // Dot loader
-  dotRow: {
+  // ── Brand text ────────────────────────────
+  brandName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1E3FA3',             // brand blue
+    letterSpacing: 0.3,
+    marginBottom: 5,
+  },
+  taglineGuj: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F47920',             // brand orange
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  taglineEng: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#94A3B8',
+    marginBottom: 48,
+  },
+
+  // ── Dot loader ────────────────────────────
+  dotsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 60,
+    alignItems: 'center',
+    gap: 8,
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+  },
+  dotActive: {
+    width: 8,
+    backgroundColor: '#1E3FA3',  // blue
+  },
+  dotPill: {
+    width: 22,
+    backgroundColor: '#F47920',  // orange — brand accent, wider pill
+  },
+  dotFaint: {
+    width: 8,
+    backgroundColor: '#1E3FA3',
+    opacity: 0.25,
   },
 
+  // ── Bottom label ──────────────────────────
   bottomLabel: {
     position: 'absolute',
     bottom: 36,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#CBD5E1',
     letterSpacing: 0.8,
+    fontWeight: '500',
   },
 });

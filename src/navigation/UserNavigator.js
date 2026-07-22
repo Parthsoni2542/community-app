@@ -4,44 +4,57 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
-import Icon    from 'react-native-vector-icons/Feather';
+import Icon from 'react-native-vector-icons/Feather';
 import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import HomeScreen         from '../screens/user/HomeScreen';
-import ExpertListScreen   from '../screens/user/ExpertListScreen';
+import HomeScreen from '../screens/user/HomeScreen';
+import ExpertListScreen from '../screens/user/ExpertListScreen';
 import ExpertDetailScreen from '../screens/user/ExpertDetailScreen';
-import ChatScreen         from '../screens/user/ChatScreen';
-import ChatHistoryScreen  from '../screens/user/ChatHistoryScreen';
-import UserProfile        from '../screens/user/UserProfile';
+import ChatScreen from '../screens/user/ChatScreen';
+import ChatHistoryScreen from '../screens/user/ChatHistoryScreen';
+import UserProfile from '../screens/user/UserProfile';
+import EditProfile from '../screens/user/EditProfile';
+import PrivacyPolicy from '../screens/user/PrivacyPolicy';
+import TermsOfService from '../screens/user/TermsOfService';
+import NotificationScreen from '../screens/user/NotificationScreen';
+import MainChatScreen from '../screens/user/BrodcastChatScreen';
+import BrodcastChatScreen from '../screens/user/BrodcastChatScreen';
+import SubCategoryListScreen from '../screens/user/SubCategoryListScreen';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const COLORS = {
-  primary  : '#0D7B7A',
-  inactive : '#94A3B8',
-  surface  : '#FFFFFF',
-  border   : '#E0F2F1',
-  activeBg : '#F0FDFA',
-  shadow   : '#0D7B7A',
+  primary: '#0D7B7A',
+  inactive: '#94A3B8',
+  surface: '#FFFFFF',
+  border: '#E0F2F1',
+  activeBg: '#F0FDFA',
+  shadow: '#0D7B7A',
 };
 
 const TAB_HEIGHT_BASE = Platform.OS === 'ios' ? 56 : 60;
 
 // Set lookup is O(1) — faster than Array.includes on every render
-const HIDE_TAB_ROUTES = new Set(['Chat', 'ChatFromHistory']);
+const HIDE_TAB_ROUTES = new Set(['Chat', 'ChatFromHistory', 'EditProfile', 'MainChat']);
 
 // ── Stack Navigators ──────────────────────────────────────────────────────────
 
 const HomeStackNav = createStackNavigator();
 const HistStackNav = createStackNavigator();
+const ProfStackNav = createStackNavigator();
 
 function HomeStack() {
   return (
     <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStackNav.Screen name="HomeMain"     component={HomeScreen}         />
-      <HomeStackNav.Screen name="ExpertList"   component={ExpertListScreen}   />
+      <HomeStackNav.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStackNav.Screen name="SubCategoryList" component={SubCategoryListScreen} />
+      <HomeStackNav.Screen name="ExpertList" component={ExpertListScreen} />
       <HomeStackNav.Screen name="ExpertDetail" component={ExpertDetailScreen} />
-      <HomeStackNav.Screen name="Chat"         component={ChatScreen}         />
+      <HomeStackNav.Screen name="Chat" component={ChatScreen} />
+      <HomeStackNav.Screen name="EditProfile" component={EditProfile} />
+      <HomeStackNav.Screen name="NotificationScreen" component={NotificationScreen} />
+      <HomeStackNav.Screen name="MainChat" component={BrodcastChatScreen} />
+
     </HomeStackNav.Navigator>
   );
 }
@@ -49,19 +62,33 @@ function HomeStack() {
 function HistoryStack() {
   return (
     <HistStackNav.Navigator screenOptions={{ headerShown: false }}>
-      <HistStackNav.Screen name="ChatHistory"     component={ChatHistoryScreen} />
-      <HistStackNav.Screen name="ChatFromHistory" component={ChatScreen}        />
+      <HistStackNav.Screen name="ChatHistory" component={ChatHistoryScreen} />
+      <HistStackNav.Screen name="ChatFromHistory" component={ChatScreen} />
+      <HistStackNav.Screen name="MainChat" component={BrodcastChatScreen} />
+      <HistStackNav.Screen name='EditProfile' component={EditProfile} />
     </HistStackNav.Navigator>
   );
 }
+
+function ProfileStack() {
+  return (
+    <ProfStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <ProfStackNav.Screen name="ProfileMain" component={UserProfile} />
+      <ProfStackNav.Screen name="EditProfile" component={EditProfile} />
+      <ProfStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+      <ProfStackNav.Screen name="TermsOfService" component={TermsOfService} />
+    </ProfStackNav.Navigator>
+  );
+}
+
 
 // ── Tab Icon ──────────────────────────────────────────────────────────────────
 // Icon map defined outside component — zero allocation cost per render
 
 const TAB_ICONS = {
-  Home   : (s, c) => <Icon    name="home"                 size={s} color={c} />,
+  Home: (s, c) => <Icon name="home" size={s} color={c} />,
   History: (s, c) => <MatIcon name="message-text-outline" size={s} color={c} />,
-  Profile: (s, c) => <Icon    name="user"                 size={s} color={c} />,
+  Profile: (s, c) => <Icon name="user" size={s} color={c} />,
 };
 
 const TabIcon = memo(({ routeName, focused }) => {
@@ -87,14 +114,14 @@ const TabBarBackground = memo(({ height }) => (
 const Tab = createBottomTabNavigator();
 
 export default function UserNavigator() {
-  const insets    = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   // Adds home-indicator / Android nav-bar space automatically
   const tabHeight = TAB_HEIGHT_BASE + insets.bottom;
 
   const screenOptions = useCallback(
     ({ route }) => {
       const focusedRoute = getFocusedRouteNameFromRoute(route) ?? '';
-      const hideTab      = HIDE_TAB_ROUTES.has(focusedRoute);
+      const hideTab = HIDE_TAB_ROUTES.has(focusedRoute);
 
       return {
         headerShown: false,
@@ -103,11 +130,11 @@ export default function UserNavigator() {
           <TabIcon routeName={route.name} focused={focused} />
         ),
 
-        tabBarActiveTintColor  : COLORS.primary,
+        tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.inactive,
 
         tabBarLabelStyle: styles.tabLabel,
-        tabBarItemStyle : [styles.tabItem, { paddingBottom: insets.bottom > 0 ? 0 : 6 }],
+        tabBarItemStyle: [styles.tabItem, { paddingBottom: insets.bottom > 0 ? 0 : 6 }],
 
         tabBarStyle: [
           styles.tabBar,
@@ -136,7 +163,7 @@ export default function UserNavigator() {
       />
       <Tab.Screen
         name="Profile"
-        component={UserProfile}
+        component={ProfileStack}
         options={{ tabBarLabel: 'Profile' }}
       />
     </Tab.Navigator>
@@ -148,14 +175,14 @@ export default function UserNavigator() {
 const styles = StyleSheet.create({
   // Transparent shell — position only, no visuals here
   tabBar: {
-    position       : 'absolute',
-    bottom         : 0,
-    left           : 0,
-    right          : 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: 'transparent',
-    borderTopWidth : 0,
-    elevation      : 0,
-    shadowOpacity  : 0,
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
   },
 
   tabBarHidden: {
@@ -164,20 +191,20 @@ const styles = StyleSheet.create({
 
   // All visual chrome lives here — single shadow source
   tabBarBg: {
-    position       : 'absolute',
-    bottom         : 0,
-    left           : 0,
-    right          : 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: COLORS.surface,
-    borderTopWidth : 1,
-    borderColor    : COLORS.border,
+    borderTopWidth: 1,
+    borderColor: COLORS.border,
     // iOS shadow
-    shadowColor    : COLORS.shadow,
-    shadowOpacity  : 0.12,
-    shadowRadius   : 20,
-    shadowOffset   : { width: 0, height: -6 },
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -6 },
     // Android elevation
-    elevation      : 20,
+    elevation: 20,
   },
 
   tabItem: {
@@ -185,18 +212,18 @@ const styles = StyleSheet.create({
   },
 
   tabLabel: {
-    fontSize     : 11,
-    fontWeight   : '700',
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
 
   // Icon container — teal pill background when active
   iconWrap: {
-    width         : 52,
-    height        : 36,
-    borderRadius  : 14,
+    width: 52,
+    height: 36,
+    borderRadius: 14,
     justifyContent: 'center',
-    alignItems    : 'center',
+    alignItems: 'center',
   },
 
   iconWrapActive: {
@@ -205,11 +232,11 @@ const styles = StyleSheet.create({
 
   // Small dot below icon — secondary active signal
   activeDot: {
-    position       : 'absolute',
-    bottom         : 3,
-    width          : 4,
-    height         : 4,
-    borderRadius   : 2,
+    position: 'absolute',
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: COLORS.primary,
   },
 });

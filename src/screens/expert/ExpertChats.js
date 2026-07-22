@@ -1,68 +1,559 @@
+// import React, {
+//   useEffect, useState, useCallback, useMemo, memo, useRef,
+// } from 'react';
+// import {
+//   View, Text, StyleSheet, FlatList, TouchableOpacity,
+//   StatusBar, TextInput, Platform, Animated,
+// } from 'react-native';
+// import {
+//   getFirestore, collection, query,
+//   where, onSnapshot,
+// } from '@react-native-firebase/firestore';
+// import auth from '@react-native-firebase/auth';
+// import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import Icon from 'react-native-vector-icons/Feather';
+// import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+// import IonIcon from 'react-native-vector-icons/Ionicons';
 
-/**
- * ExpertChats.jsx
- * All hooks called unconditionally before any early return — Rules of Hooks compliant.
- */
+// // ─── Design Tokens ────────────────────────────────────────────────────────────
+
+// const T = {
+//   primary: '#0D7B7A',
+//   primaryLight: '#F0FDFA',
+//   primaryBorder: '#E0F2F1',
+//   primaryMid: '#0F6E56',
+//   bg: '#F4FAFA',
+//   surface: '#FFFFFF',
+//   textMain: '#0F172A',
+//   textSub: '#64748B',
+//   inactive: '#94A3B8',
+//   active: '#10B981',
+//   danger: '#DC2626',
+//   e2eColor: '#7C3AED',
+//   e2eLight: '#F5F3FF',
+//   e2eBorder: '#DDD6FE',
+// };
+
+// const AVATAR_COLORS = [
+//   '#0D7B7A', '#7C3AED', '#DB2777',
+//   '#059669', '#0891B2', '#DC2626', '#2563EB',
+// ];
+
+// const TABS_CONFIG = [
+//   { key: 'e2e', label: 'Expert → Expert', icon: 'account-switch-outline',    color: T.e2eColor, light: T.e2eLight,    border: T.e2eBorder   },
+//   { key: 'e2u', label: 'Expert → User',   icon: 'account-arrow-right-outline', color: T.primary,  light: T.primaryLight, border: T.primaryBorder },
+// ];
+
+// // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+// const getAvatarColor = (name) =>
+//   AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+
+// const getInitials = (name) => {
+//   if (!name) return '?';
+//   const p = name.trim().split(' ');
+//   return p.length >= 2
+//     ? p[0][0].toUpperCase() + p[1][0].toUpperCase()
+//     : p[0][0].toUpperCase();
+// };
+
+// const formatTime = (ts) => {
+//   if (!ts?.toDate) return '';
+//   const d = ts.toDate();
+//   const diff = Date.now() - d.getTime();
+//   if (diff < 60_000)     return 'Just now';
+//   if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`;
+//   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+//   return d.toLocaleDateString('en-IN');
+// };
+
+// // ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+// const SkeletonBox = memo(({ width, height, borderRadius = 8, style }) => {
+//   const anim = useRef(new Animated.Value(0.4)).current;
+//   useEffect(() => {
+//     Animated.loop(Animated.sequence([
+//       Animated.timing(anim, { toValue: 1,   duration: 700, useNativeDriver: true }),
+//       Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+//     ])).start();
+//   }, [anim]);
+//   return <Animated.View style={[{ width, height, borderRadius, backgroundColor: '#C8EEEB', opacity: anim }, style]} />;
+// });
+
+// const CardSkeleton = memo(() => (
+//   <View style={styles.compactCard}>
+//     <SkeletonBox width={40} height={40} borderRadius={12} style={{ marginRight: 10 }} />
+//     <View style={{ flex: 1, gap: 7 }}>
+//       <SkeletonBox width="50%" height={12} />
+//       <SkeletonBox width="75%" height={10} />
+//     </View>
+//     <SkeletonBox width={28} height={10} />
+//   </View>
+// ));
+
+// // ─── Compact Card (shared layout for both tabs) ───────────────────────────────
+
+// const CompactCard = memo(({ item, accentColor, accentLight, label, name, onPress }) => {
+//   const topic = item.subcategoryName || item.categoryName || label;
+//   const isChatEnabled = item.ChatEnabled === true;
+
+//   return (
+//     <TouchableOpacity
+//       style={styles.compactCard}
+//       onPress={() => onPress(item)}
+//       activeOpacity={0.78}
+//     >
+//       {/* Left accent bar */}
+//       <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+
+//       {/* Avatar */}
+//       <View style={[styles.avatar, { backgroundColor: getAvatarColor(name) }]}>
+//         <Text style={styles.avatarText}>{getInitials(name)}</Text>
+//         {item.isActive && <View style={[styles.activeDot, { borderColor: accentLight }]} />}
+//       </View>
+
+//       {/* Content */}
+//       <View style={styles.cardContent}>
+//         <View style={styles.cardRow}>
+//           <Text style={styles.cardName} numberOfLines={1}>{name || 'User'}</Text>
+//           <Text style={styles.cardTime}>{formatTime(item.updatedAt)}</Text>
+//         </View>
+//         <View style={styles.cardRow}>
+//           <Text style={[styles.cardTopic, { color: accentColor }]} numberOfLines={1}>
+//             {topic}
+//           </Text>
+//           {/* enabled/pending pill only for e2e */}
+//           {/* {label === 'Expert Chat' && (
+//             <View style={[
+//               styles.miniPill,
+//               isChatEnabled
+//                 ? { backgroundColor: '#ECFDF5', borderColor: '#6EE7B7' }
+//                 : { backgroundColor: '#FEF3C7', borderColor: '#FCD34D' },
+//             ]}>
+//               <Text style={[styles.miniPillText, { color: isChatEnabled ? '#059669' : '#D97706' }]}>
+//                 {isChatEnabled ? 'Enabled' : 'Pending'}
+//               </Text>
+//             </View>
+//           )} */}
+//         </View>
+//         <Text style={styles.cardMsg} numberOfLines={1}>
+//           {item.lastMessage || 'No messages yet'}
+//         </Text>
+//       </View>
+
+//       {/* Chevron */}
+//       <Icon name="chevron-right" size={15} color={T.inactive} />
+//     </TouchableOpacity>
+//   );
+// });
+
+// // ─── Tab Button ───────────────────────────────────────────────────────────────
+
+// const TabButton = memo(({ tabCfg, count, isActive, onPress }) => (
+//   <TouchableOpacity
+//     style={[styles.tab, isActive && { backgroundColor: tabCfg.light, borderColor: tabCfg.color }]}
+//     onPress={onPress}
+//     activeOpacity={0.75}
+//   >
+//     <MatIcon name={tabCfg.icon} size={13} color={isActive ? tabCfg.color : T.inactive} />
+//     <Text style={[styles.tabText, isActive && { color: tabCfg.color, fontWeight: '800' }]}>
+//       {tabCfg.label}
+//     </Text>
+//     <View style={[styles.tabBadge, isActive && { backgroundColor: tabCfg.color }]}>
+//       <Text style={[styles.tabBadgeText, isActive && { color: '#FFFFFF' }]}>{count}</Text>
+//     </View>
+//   </TouchableOpacity>
+// ));
+
+// // ─── Empty State ──────────────────────────────────────────────────────────────
+
+// const EmptyState = memo(({ search, tab }) => {
+//   const isE2E = tab === 'e2e';
+//   return (
+//     <View style={styles.empty}>
+//       <MatIcon name={isE2E ? 'account-switch-outline' : 'bullhorn-outline'} size={44} color={isE2E ? T.e2eColor : T.primary} />
+//       <Text style={styles.emptyTitle}>
+//         {search.trim() ? 'No results found' : isE2E ? 'No Expert Chats' : 'No Chats'}
+//       </Text>
+//       <Text style={styles.emptySub}>
+//         {search.trim()
+//           ? `Nothing matches "${search}"`
+//           : isE2E ? 'Admin will assign chats to you here' : 'User chat requests will appear here'}
+//       </Text>
+//     </View>
+//   );
+// });
+
+// // ─── Loading / Error ──────────────────────────────────────────────────────────
+
+// const LoadingScreen = memo(({ pt }) => (
+//   <View style={styles.container}>
+//     <View style={[styles.header, { paddingTop: pt + 16 }]}>
+//       <SkeletonBox width={130} height={20} style={{ marginBottom: 5 }} />
+//       <SkeletonBox width={90} height={11} />
+//     </View>
+//     <View style={styles.searchWrap}><SkeletonBox width="100%" height={42} borderRadius={12} /></View>
+//     <View style={styles.tabRow}>
+//       <SkeletonBox width="48%" height={40} borderRadius={10} />
+//       <SkeletonBox width="48%" height={40} borderRadius={10} />
+//     </View>
+//     <View style={{ paddingHorizontal: 16, gap: 8, marginTop: 8 }}>
+//       {[1,2,3,4,5].map((k) => <CardSkeleton key={k} />)}
+//     </View>
+//   </View>
+// ));
+
+// const ErrorScreen = memo(({ message }) => (
+//   <View style={[styles.container, styles.centered]}>
+//     <MatIcon name="alert-circle-outline" size={44} color={T.danger} />
+//     <Text style={styles.emptyTitle}>Something went wrong</Text>
+//     <Text style={styles.emptySub}>{message}</Text>
+//   </View>
+// ));
+
+// // ─── Main Screen ──────────────────────────────────────────────────────────────
+
+// export default function ExpertChats({ navigation }) {
+//   const insets = useSafeAreaInsets();
+
+//   const [e2eChats, setE2eChats] = useState([]);   // expertId == uid
+//   const [e2uChats, setE2uChats] = useState([]);   // expertIds array-contains uid
+//   const [loading,  setLoading]  = useState(true);
+//   const [error,    setError]    = useState(null);
+//   const [search,   setSearch]   = useState('');
+//   const [tab,      setTab]      = useState('e2e');
+
+//   const db  = useMemo(() => getFirestore(), []);
+//   const uid = useMemo(() => auth().currentUser?.uid, []);
+
+//   // ── Listener 1: Expert→Expert ─────────────────────────────────────────────
+//   useEffect(() => {
+//     if (!uid) { setLoading(false); return; }
+//     return onSnapshot(
+//       query(collection(db, 'broadcastChats'), where('userId', '==', uid)),
+//       (snap) => {
+//         setE2eChats(
+//           snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+//             .sort((a, b) => (b.updatedAt?.toDate?.() ?? 0) - (a.updatedAt?.toDate?.() ?? 0)),
+//         );
+//         setLoading(false);
+//       },
+//       (err) => { console.error('E2E error:', err); setError('Failed to load chats.'); setLoading(false); },
+//     );
+//   }, [db, uid]);
+
+//   // ── Listener 2: Expert→User ───────────────────────────────────────────────
+//   useEffect(() => {
+//     if (!uid) return;
+//     return onSnapshot(
+//       query(collection(db, 'broadcastChats'), where('expertIds', 'array-contains', uid)),
+//       (snap) => {
+//         setE2uChats(
+//           snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+//             .sort((a, b) => (b.updatedAt?.toDate?.() ?? 0) - (a.updatedAt?.toDate?.() ?? 0)),
+//         );
+//       },
+//       (err) => { console.error('E2U error:', err); },
+//     );
+//   }, [db, uid]);
+
+//   const counts = useMemo(() => ({ e2e: e2eChats.length, e2u: e2uChats.length }), [e2eChats, e2uChats]);
+
+//   const filtered = useMemo(() => {
+//     const src = tab === 'e2e' ? e2eChats : e2uChats;
+//     if (!search.trim()) return src;
+//     const s = search.toLowerCase();
+//     return src.filter((c) => (c.userName ?? c.expertName ?? '').toLowerCase().includes(s));
+//   }, [e2eChats, e2uChats, tab, search]);
+
+//   // ── Navigation ────────────────────────────────────────────────────────────
+//   const handleE2EPress = useCallback((item) => {
+//     navigation.navigate('MainChat', {
+//       chatId: item.id,
+//       userName: item.userName || 'User',
+//       isBroadcast: true,
+//       categoryName: item.categoryName ?? '',
+//       subcategoryName: item.subcategoryName ?? '',
+//       expertIds: item.expertIds ?? [],
+//     });
+//   }, [navigation]);
+
+//   const handleE2UPress = useCallback((item) => {
+//     navigation.navigate('ExpertReplyChat', {
+//       chatId: item.id,
+//       userName: item.userName || 'User',
+//       isBroadcast: true,
+//       subcategoryName: item.subcategoryName ?? '',
+//       categoryName: item.categoryName ?? '',
+//       expertIds: item.expertIds ?? [],
+//     });
+//   }, [navigation]);
+
+//   const keyExtractor = useCallback((item) => item.id, []);
+
+//   const renderItem = useCallback(({ item }) => {
+//     if (tab === 'e2e') {
+//       return (
+//         <CompactCard
+//           item={item}
+//           accentColor={T.e2eColor}
+//           accentLight={T.e2eLight}
+//           label="Expert Chat"
+//           name={item.expertName || 'User'}
+//           onPress={handleE2EPress}
+//         />
+//       );
+//     }
+//     return (
+//       <CompactCard
+//         item={item}
+//         accentColor={T.primary}
+//         accentLight={T.primaryLight}
+//         label="Broadcast"
+//         name={item.userName || 'User'}
+//         onPress={handleE2UPress}
+//       />
+//     );
+//   }, [tab, handleE2EPress, handleE2UPress]);
+
+//   const pt = insets.top > 0 ? insets.top : 0;
+
+//   if (loading) return <LoadingScreen pt={pt} />;
+//   if (error)   return <ErrorScreen message={error} />;
+
+//   return (
+//     <View style={styles.container}>
+//       <StatusBar barStyle="dark-content" backgroundColor={T.surface} />
+
+//       {/* Header */}
+//       <View style={[styles.header, { paddingTop: pt + 16 }]}>
+//         <View style={styles.headerLeft}>
+//           <View style={styles.headerIcon}>
+//             <MatIcon name="chat-processing-outline" size={17} color={T.primary} />
+//           </View>
+//           <View>
+//             <Text style={styles.headerTitle}>My Chats</Text>
+//             <Text style={styles.headerSub}>{counts.e2e} expert · {counts.e2u} broadcast</Text>
+//           </View>
+//         </View>
+//       </View>
+
+//       {/* Search */}
+//       <View style={styles.searchWrap}>
+//         <Icon name="search" size={15} color={T.inactive} />
+//         <TextInput
+//           style={styles.searchInput}
+//           placeholder="Search by name..."
+//           placeholderTextColor={T.inactive}
+//           value={search}
+//           onChangeText={setSearch}
+//           returnKeyType="search"
+//         />
+//         {search.length > 0 && (
+//           <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+//             <Icon name="x" size={14} color={T.inactive} />
+//           </TouchableOpacity>
+//         )}
+//       </View>
+
+//       {/* Tabs */}
+//       <View style={styles.tabRow}>
+//         {TABS_CONFIG.map((tabCfg) => (
+//           <TabButton
+//             key={tabCfg.key}
+//             tabCfg={tabCfg}
+//             count={counts[tabCfg.key]}
+//             isActive={tab === tabCfg.key}
+//             onPress={() => setTab(tabCfg.key)}
+//           />
+//         ))}
+//       </View>
+
+//       {/* List */}
+//       <FlatList
+//         data={filtered}
+//         keyExtractor={keyExtractor}
+//         renderItem={renderItem}
+//         ListEmptyComponent={<EmptyState search={search} tab={tab} />}
+//         contentContainerStyle={styles.listContent}
+//         showsVerticalScrollIndicator={false}
+//         keyboardShouldPersistTaps="handled"
+//         keyboardDismissMode="on-drag"
+//         initialNumToRender={15}
+//         maxToRenderPerBatch={10}
+//         windowSize={8}
+//         removeClippedSubviews={Platform.OS === 'android'}
+//         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+//       />
+//     </View>
+//   );
+// }
+
+// // ─── Styles ───────────────────────────────────────────────────────────────────
+
+// const styles = StyleSheet.create({
+//   container: { flex: 1, backgroundColor: T.bg },
+//   centered:  { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+//   listContent: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 100 },
+
+//   // Header
+//   header: {
+//     backgroundColor: T.surface,
+//     paddingHorizontal: 18, paddingBottom: 14,
+//     borderBottomWidth: 1, borderBottomColor: T.primaryBorder,
+//     ...Platform.select({
+//       ios:     { shadowColor: T.primary, shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+//       android: { elevation: 2 },
+//     }),
+//   },
+//   headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+//   headerIcon:  {
+//     width: 34, height: 34, borderRadius: 10,
+//     backgroundColor: T.primaryLight, alignItems: 'center', justifyContent: 'center',
+//     borderWidth: 1, borderColor: T.primaryBorder,
+//   },
+//   headerTitle: { fontSize: 18, fontWeight: '800', color: T.textMain },
+//   headerSub:   { fontSize: 11, color: T.inactive, marginTop: 1 },
+
+//   // Search
+//   searchWrap: {
+//     flexDirection: 'row', alignItems: 'center',
+//     backgroundColor: T.surface,
+//     marginHorizontal: 14, marginTop: 12,
+//     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+//     borderWidth: 1, borderColor: T.primaryBorder,
+//     gap: 8,
+//   },
+//   searchInput: { flex: 1, fontSize: 14, color: T.textMain, padding: 0 },
+
+//   // Tabs
+//   tabRow: {
+//     flexDirection: 'row',
+//     marginHorizontal: 14, marginTop: 10, marginBottom: 2,
+//     gap: 8,
+//   },
+//   tab: {
+//     flex: 1, flexDirection: 'row', alignItems: 'center',
+//     justifyContent: 'center', gap: 4,
+//     backgroundColor: T.surface,
+//     borderRadius: 10, paddingVertical: 9,
+//     borderWidth: 1.5, borderColor: T.primaryBorder,
+//   },
+//   tabText:          { fontSize: 11, fontWeight: '600', color: T.inactive },
+//   tabBadge:         { backgroundColor: '#E2E8F0', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 7 },
+//   tabBadgeText:     { fontSize: 10, fontWeight: '700', color: T.inactive },
+
+//   // ── Compact Card ───────────────────────────────────────────────────────────
+//   compactCard: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     backgroundColor: T.surface,
+//     borderRadius: 14,
+//     paddingVertical: 10,
+//     paddingRight: 12,
+//     paddingLeft: 0,
+//     borderWidth: 1, borderColor: T.primaryBorder,
+//     overflow: 'hidden',
+//     gap: 10,
+//     ...Platform.select({
+//       ios:     { shadowColor: T.primary, shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+//       android: { elevation: 2 },
+//     }),
+//   },
+
+//   // Left color accent bar (4px wide, full height via alignSelf)
+//   accentBar: { width: 4, alignSelf: 'stretch', borderRadius: 2, marginLeft: 0 },
+
+//   // Avatar (small)
+//   avatar: {
+//     width: 40, height: 40, borderRadius: 12,
+//     justifyContent: 'center', alignItems: 'center',
+//     position: 'relative',
+//   },
+//   avatarText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+//   activeDot:  {
+//     position: 'absolute', bottom: 0, right: 0,
+//     width: 10, height: 10, borderRadius: 5,
+//     backgroundColor: T.active, borderWidth: 1.5,
+//   },
+
+//   // Card content
+//   cardContent: { flex: 1, gap: 3 },
+//   cardRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+//   cardName:    { fontSize: 13, fontWeight: '700', color: T.textMain, flex: 1, marginRight: 6 },
+//   cardTime:    { fontSize: 10, color: T.inactive, fontWeight: '500' },
+//   cardTopic:   { fontSize: 11, fontWeight: '600', flex: 1, marginRight: 6 },
+//   cardMsg:     { fontSize: 12, color: T.textSub },
+
+//   // Mini enabled/pending pill
+//   miniPill: {
+//     paddingHorizontal: 6, paddingVertical: 2,
+//     borderRadius: 6, borderWidth: 1,
+//   },
+//   miniPillText: { fontSize: 9, fontWeight: '700' },
+
+//   // Empty / Error
+//   empty:      { alignItems: 'center', paddingTop: 70, paddingHorizontal: 32 },
+//   emptyTitle: { fontSize: 15, fontWeight: '700', color: T.textMain, marginTop: 14, marginBottom: 5 },
+//   emptySub:   { fontSize: 12, color: T.inactive, textAlign: 'center', lineHeight: 18 },
+// });
 
 import React, {
   useEffect, useState, useCallback, useMemo, memo, useRef,
 } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, TextInput, Platform, Animated,
+  StatusBar, TextInput, Platform, Animated, SectionList,
 } from 'react-native';
 import {
   getFirestore, collection, query,
-  where, onSnapshot, orderBy,
+  where, onSnapshot,
 } from '@react-native-firebase/firestore';
-import auth                  from '@react-native-firebase/auth';
+import auth from '@react-native-firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Icon                  from 'react-native-vector-icons/Feather';
-import MatIcon               from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/Feather';
+import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import IonIcon from 'react-native-vector-icons/Ionicons';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Design Tokens ────────────────────────────────────────────────────────────
 
-const COLORS = {
-  primary   : '#7C3AED',
-  primaryBg : '#F5F3FF',
-  primaryBdr: '#EDE9FE',
-  surface   : '#FFFFFF',
-  bg        : '#F8FAFC',
-  border    : '#F1F5F9',
-  textPrim  : '#0F172A',
-  textSec   : '#64748B',
-  textMuted : '#94A3B8',
-  active    : '#10B981',
-  inactive  : '#CBD5E1',
+const T = {
+  primary: '#0D7B7A',
+  primaryLight: '#F0FDFA',
+  primaryBorder: '#E0F2F1',
+  bg: '#F4FAFA',
+  surface: '#FFFFFF',
+  textMain: '#0F172A',
+  textSub: '#64748B',
+  inactive: '#94A3B8',
+  active: '#10B981',
+  danger: '#DC2626',
+  e2eColor: '#7C3AED',
+  e2eLight: '#F5F3FF',
+  e2eBorder: '#DDD6FE',
 };
 
-const CARD_HEIGHT = 82;
-const CARD_MARGIN = 10;
-const CARD_TOTAL  = CARD_HEIGHT + CARD_MARGIN;
-
 const AVATAR_COLORS = [
-  '#2563EB', '#7C3AED', '#DB2777',
-  '#059669', '#D97706', '#DC2626', '#0891B2',
+  '#0D7B7A', '#7C3AED', '#DB2777',
+  '#059669', '#0891B2', '#DC2626', '#2563EB',
 ];
 
-const TABS_CONFIG = [
-  { key: 'all',     label: 'All'     },
-  { key: 'pending', label: 'Pending' },
-  { key: 'active',  label: 'Active'  },
-  { key: 'closed',  label: 'Closed'  },
-];
-
-// ─── Pure helpers (module-level) ──────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const getAvatarColor = (name) =>
   AVATAR_COLORS[(name?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 
-const getInitial = (name) =>
-  name?.trim().charAt(0).toUpperCase() || '?';
+const getInitials = (name) => {
+  if (!name) return '?';
+  const p = name.trim().split(' ');
+  return p.length >= 2
+    ? p[0][0].toUpperCase() + p[1][0].toUpperCase()
+    : p[0][0].toUpperCase();
+};
 
 const formatTime = (ts) => {
   if (!ts?.toDate) return '';
-  const d    = ts.toDate();
+  const d = ts.toDate();
   const diff = Date.now() - d.getTime();
   if (diff < 60_000)     return 'Just now';
   if (diff < 3_600_000)  return `${Math.floor(diff / 60_000)}m ago`;
@@ -72,153 +563,102 @@ const formatTime = (ts) => {
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-const SkeletonBox = memo(({ width, height, borderRadius = 10, style }) => {
+const SkeletonBox = memo(({ width, height, borderRadius = 8, style }) => {
   const anim = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1,   duration: 700, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ]),
-    ).start();
+    Animated.loop(Animated.sequence([
+      Animated.timing(anim, { toValue: 1,   duration: 700, useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+    ])).start();
   }, [anim]);
   return (
-    <Animated.View
-      style={[{ width, height, borderRadius, backgroundColor: '#E2E8F0', opacity: anim }, style]}
-    />
+    <Animated.View style={[
+      { width, height, borderRadius, backgroundColor: '#C8EEEB', opacity: anim },
+      style,
+    ]} />
   );
 });
 
-const ChatCardSkeleton = memo(() => (
-  <View style={styles.card}>
-    <SkeletonBox width={8}  height={8}  borderRadius={4} style={{ marginRight: 10 }} />
-    <SkeletonBox width={46} height={46} borderRadius={23} style={{ marginRight: 12 }} />
-    <View style={{ flex: 1, gap: 8 }}>
-      <SkeletonBox width="55%" height={13} />
-      <SkeletonBox width="80%" height={11} />
+const CardSkeleton = memo(() => (
+  <View style={styles.compactCard}>
+    <SkeletonBox width={40} height={40} borderRadius={12} style={{ marginRight: 10 }} />
+    <View style={{ flex: 1, gap: 7 }}>
+      <SkeletonBox width="50%" height={12} />
+      <SkeletonBox width="75%" height={10} />
     </View>
-    <SkeletonBox width={32} height={11} />
+    <SkeletonBox width={28} height={10} />
   </View>
 ));
 
-// ─── Chat Card ────────────────────────────────────────────────────────────────
+// ─── Compact Card ─────────────────────────────────────────────────────────────
 
-const ChatCard = memo(({ item, onPress }) => {
-  const isPending = item.isActive && !item.expertAccepted;
+const CompactCard = memo(({ item, accentColor, accentLight, name, onPress }) => {
+  const topic = item.subcategoryName || item.categoryName || '';
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={styles.compactCard}
       onPress={() => onPress(item)}
-      activeOpacity={0.82}
+      activeOpacity={0.78}
     >
-      <View style={[styles.statusDot, { backgroundColor: item.isActive ? COLORS.active : COLORS.inactive }]} />
-
-      <View style={[styles.avatar, { backgroundColor: getAvatarColor(item.userName) }]}>
-        <Text style={styles.avatarText}>{getInitial(item.userName)}</Text>
-        {isPending && <View style={styles.pendingRing} />}
+      <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
+      <View style={[styles.avatar, { backgroundColor: getAvatarColor(name) }]}>
+        <Text style={styles.avatarText}>{getInitials(name)}</Text>
+        {item.isActive && <View style={[styles.activeDot, { borderColor: accentLight }]} />}
       </View>
-
       <View style={styles.cardContent}>
-        <View style={styles.cardTopRow}>
-          <Text style={styles.userName} numberOfLines={1}>{item.userName || 'User'}</Text>
-          <Text style={styles.time}>{formatTime(item.updatedAt)}</Text>
+        <View style={styles.cardRow}>
+          <Text style={styles.cardName} numberOfLines={1}>{name || 'User'}</Text>
+          <Text style={styles.cardTime}>{formatTime(item.updatedAt)}</Text>
         </View>
-        <View style={styles.cardBottomRow}>
-          <Text style={styles.lastMsg} numberOfLines={1}>
-            {item.lastMessage || 'No messages yet'}
-          </Text>
-          {item.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>{item.unreadCount}</Text>
-            </View>
-          )}
-        </View>
-        <View style={styles.cardTagRow}>
-          {item.category ? (
-            <View style={styles.categoryTag}>
-              <MatIcon name="tag-outline" size={9} color={COLORS.primary} />
-              <Text style={styles.categoryTagText}>{item.category}</Text>
-            </View>
-          ) : null}
-          {isPending && (
-            <View style={styles.pendingTag}>
-              <Text style={styles.pendingTagText}>Pending</Text>
-            </View>
-          )}
-        </View>
+        <Text style={[styles.cardTopic, { color: accentColor }]} numberOfLines={1}>
+          {topic}
+        </Text>
+        <Text style={styles.cardMsg} numberOfLines={1}>
+          {item.lastMessage || 'No messages yet'}
+        </Text>
       </View>
-
-      <Icon name="chevron-right" size={16} color={COLORS.inactive} />
+      <Icon name="chevron-right" size={15} color={T.inactive} />
     </TouchableOpacity>
   );
 });
 
-// ─── Tab Button ───────────────────────────────────────────────────────────────
+// ─── Section Header ───────────────────────────────────────────────────────────
 
-const TabButton = memo(({ label, count, isActive, onPress }) => (
-  <TouchableOpacity
-    style={[styles.tab, isActive && styles.tabActive]}
-    onPress={onPress}
-    activeOpacity={0.75}
-  >
-    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
-    <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-      <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>{count}</Text>
+const SectionHeader = memo(({ title, icon, color, count }) => (
+  <View style={styles.sectionHeader}>
+    <View style={[styles.sectionIconWrap, { backgroundColor: color + '18' }]}>
+      <MatIcon name={icon} size={14} color={color} />
     </View>
-  </TouchableOpacity>
+    <Text style={[styles.sectionTitle, { color }]}>{title}</Text>
+    <View style={[styles.sectionBadge, { backgroundColor: color }]}>
+      <Text style={styles.sectionBadgeText}>{count}</Text>
+    </View>
+  </View>
 ));
 
-// ─── Empty State Component (pure component — no hooks) ────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
 
-const ListEmptyComponent = memo(({ search, tab }) => (
+const EmptyState = memo(({ search }) => (
   <View style={styles.empty}>
-    <MatIcon name="chat-remove-outline" size={52} color={COLORS.inactive} />
+    <MatIcon name="chat-outline" size={44} color={T.primary} />
     <Text style={styles.emptyTitle}>
-      {search.trim()
-        ? 'No results found'
-        : tab === 'pending' ? 'No Pending Chats'
-        : tab === 'active'  ? 'No Active Chats'
-        : tab === 'closed'  ? 'No Closed Chats'
-        : 'No Chats Yet'}
+      {search.trim() ? 'No results found' : 'No Chats Yet'}
     </Text>
     <Text style={styles.emptySub}>
       {search.trim()
-        ? `No chats match "${search}"`
-        : 'New conversations will appear here'}
+        ? `Nothing matches "${search}"`
+        : 'Your chats will appear here'}
     </Text>
   </View>
 ));
 
-// ─── Loading Screen (pure component — no hooks) ───────────────────────────────
-
-const LoadingScreen = memo(({ headerPadding }) => (
-  <View style={styles.container}>
-    <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
-    <View style={[styles.header, { paddingTop: headerPadding + 16 }]}>
-      <SkeletonBox width={120} height={22} borderRadius={8} />
-      <SkeletonBox width={90}  height={13} borderRadius={6} style={{ marginTop: 6 }} />
-    </View>
-    <View style={styles.searchWrap}>
-      <SkeletonBox width="100%" height={46} borderRadius={14} />
-    </View>
-    <View style={styles.tabRow}>
-      {[1,2,3,4].map((k) => (
-        <SkeletonBox key={k} width={72} height={36} borderRadius={12} />
-      ))}
-    </View>
-    <View style={{ padding: 16, gap: 10 }}>
-      {[1,2,3,4,5].map((k) => <ChatCardSkeleton key={k} />)}
-    </View>
-  </View>
-));
-
-// ─── Error Screen (pure component — no hooks) ─────────────────────────────────
+// ─── Error Screen ─────────────────────────────────────────────────────────────
 
 const ErrorScreen = memo(({ message }) => (
   <View style={[styles.container, styles.centered]}>
-    <MatIcon name="alert-circle-outline" size={52} color="#DC2626" />
-    <Text style={styles.errorTitle}>Something went wrong</Text>
-    <Text style={styles.errorSub}>{message}</Text>
+    <MatIcon name="alert-circle-outline" size={44} color={T.danger} />
+    <Text style={styles.emptyTitle}>Something went wrong</Text>
+    <Text style={styles.emptySub}>{message}</Text>
   </View>
 ));
 
@@ -227,142 +667,230 @@ const ErrorScreen = memo(({ message }) => (
 export default function ExpertChats({ navigation }) {
   const insets = useSafeAreaInsets();
 
-  // ── All hooks unconditionally at the top ─────────────────────────
-  const [chats,   setChats]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
-  const [search,  setSearch]  = useState('');
-  const [tab,     setTab]     = useState('all');
+  const [e2eChats, setE2eChats] = useState([]);
+  const [e2uChats, setE2uChats] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [search,   setSearch]   = useState('');
 
   const db  = useMemo(() => getFirestore(), []);
   const uid = useMemo(() => auth().currentUser?.uid, []);
 
+  // ── Listener 1: Expert→Expert (userId == uid) ─────────────────────────────
   useEffect(() => {
-    if (!uid) return;
-    const q = query(
-      collection(db, 'chats'),
-      where('expertId', '==', uid),
-      orderBy('updatedAt', 'desc'),
-    );
-    const unsub = onSnapshot(
-      q,
+    if (!uid) { setLoading(false); return; }
+    return onSnapshot(
+      query(collection(db, 'broadcastChats'), where('userId', '==', uid)),
       (snap) => {
-        setChats(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setE2eChats(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.updatedAt?.toDate?.() ?? 0) - (a.updatedAt?.toDate?.() ?? 0)),
+        );
         setLoading(false);
       },
       (err) => {
-        console.error('ExpertChats error:', err);
-        setError('Failed to load chats. Please try again.');
+        console.error('E2E error:', err);
+        setError('Failed to load chats.');
         setLoading(false);
       },
     );
-    return unsub;
   }, [db, uid]);
 
-  const counts = useMemo(() => ({
-    all    : chats.length,
-    pending: chats.filter((c) =>  c.isActive && !c.expertAccepted).length,
-    active : chats.filter((c) =>  c.isActive &&  c.expertAccepted).length,
-    closed : chats.filter((c) => !c.isActive).length,
-  }), [chats]);
+  // ── Listener 2: Expert→User (expertIds array-contains uid) ───────────────
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(
+      query(collection(db, 'broadcastChats'), where('expertIds', 'array-contains', uid)),
+      (snap) => {
+        setE2uChats(
+          snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.updatedAt?.toDate?.() ?? 0) - (a.updatedAt?.toDate?.() ?? 0)),
+        );
+      },
+      (err) => console.error('E2U error:', err),
+    );
+  }, [db, uid]);
 
-  const filtered = useMemo(() => {
-    let list = chats;
-    if (tab === 'pending') list = list.filter((c) =>  c.isActive && !c.expertAccepted);
-    if (tab === 'active')  list = list.filter((c) =>  c.isActive &&  c.expertAccepted);
-    if (tab === 'closed')  list = list.filter((c) => !c.isActive);
-    if (search.trim()) {
-      const s = search.toLowerCase();
-      list = list.filter((c) => c.userName?.toLowerCase().includes(s));
-    }
-    return list;
-  }, [chats, tab, search]);
-
-  const handleChatPress = useCallback((item) => {
-    navigation.navigate('ExpertReplyChat', {
-      chatId  : item.id,
+  // ── Navigation handlers ───────────────────────────────────────────────────
+  const handleE2EPress = useCallback((item) => {
+    navigation.navigate('MainChat', {
+      chatId: item.id,
       userName: item.userName || 'User',
+      isBroadcast: true,
+      categoryName: item.categoryName ?? '',
+      subcategoryName: item.subcategoryName ?? '',
+      expertIds: item.expertIds ?? [],
     });
   }, [navigation]);
 
-  const handleTabPress = useCallback((key) => setTab(key),    []);
-  const handleSearch   = useCallback((t)   => setSearch(t),   []);
-  const clearSearch    = useCallback(()    => setSearch(''),   []);
+  const handleE2UPress = useCallback((item) => {
+    navigation.navigate('ExpertReplyChat', {
+      chatId: item.id,
+      userName: item.userName || 'User',
+      isBroadcast: true,
+      subcategoryName: item.subcategoryName ?? '',
+      categoryName: item.categoryName ?? '',
+      expertIds: item.expertIds ?? [],
+    });
+  }, [navigation]);
 
-  const keyExtractor  = useCallback((item) => item.id, []);
-  const renderItem    = useCallback(({ item }) => (
-    <ChatCard item={item} onPress={handleChatPress} />
-  ), [handleChatPress]);
-  const getItemLayout = useCallback((_, index) => ({
-    length: CARD_TOTAL, offset: CARD_TOTAL * index, index,
-  }), []);
+  // ── Sections data ─────────────────────────────────────────────────────────
+  const sections = useMemo(() => {
+    const applySearch = (list, nameKey) => {
+      if (!search.trim()) return list;
+      const s = search.toLowerCase();
+      return list.filter((c) =>
+        (c[nameKey] ?? '').toLowerCase().includes(s) ||
+        (c.categoryName ?? '').toLowerCase().includes(s) ||
+        (c.subcategoryName ?? '').toLowerCase().includes(s),
+      );
+    };
 
-  const headerPadding = insets.top > 0 ? insets.top : 20;
+    const filteredE2E = applySearch(e2eChats, 'expertName');
+    const filteredE2U = applySearch(e2uChats, 'userName');
 
-  // ── Early returns AFTER all hooks ────────────────────────────────
-  if (loading) return <LoadingScreen headerPadding={headerPadding} />;
-  if (error)   return <ErrorScreen   message={error} />;
+    const result = [];
+    if (filteredE2E.length > 0) {
+      result.push({
+        key: 'e2e',
+        title: 'Expert → Expert',
+        icon: 'account-switch-outline',
+        color: T.e2eColor,
+        count: filteredE2E.length,
+        data: filteredE2E,
+      });
+    }
+    if (filteredE2U.length > 0) {
+      result.push({
+        key: 'e2u',
+        title: 'Expert → User',
+        icon: 'account-arrow-right-outline',
+        color: T.primary,
+        count: filteredE2U.length,
+        data: filteredE2U,
+      });
+    }
+    return result;
+  }, [e2eChats, e2uChats, search]);
 
-  // ── Main render ──────────────────────────────────────────────────
+  const totalCount = e2eChats.length + e2uChats.length;
+  const isEmpty = sections.length === 0;
+
+  const keyExtractor = useCallback((item) => item.id, []);
+
+  const renderItem = useCallback(({ item, section }) => {
+    if (section.key === 'e2e') {
+      return (
+        <CompactCard
+          item={item}
+          accentColor={T.e2eColor}
+          accentLight={T.e2eLight}
+          name={item.expertName || 'User'}
+          onPress={handleE2EPress}
+        />
+      );
+    }
+    return (
+      <CompactCard
+        item={item}
+        accentColor={T.primary}
+        accentLight={T.primaryLight}
+        name={item.userName || 'User'}
+        onPress={handleE2UPress}
+      />
+    );
+  }, [handleE2EPress, handleE2UPress]);
+
+  const renderSectionHeader = useCallback(({ section }) => (
+    <SectionHeader
+      title={section.title}
+      icon={section.icon}
+      color={section.color}
+      count={section.count}
+    />
+  ), []);
+
+  const pt = insets.top > 0 ? insets.top : 0;
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: pt + 16 }]}>
+          <SkeletonBox width={130} height={20} style={{ marginBottom: 5 }} />
+          <SkeletonBox width={90} height={11} />
+        </View>
+        <View style={styles.searchWrap}>
+          <SkeletonBox width="100%" height={42} borderRadius={12} />
+        </View>
+        <View style={{ paddingHorizontal: 16, gap: 8, marginTop: 12 }}>
+          {[1, 2, 3, 4, 5].map((k) => <CardSkeleton key={k} />)}
+        </View>
+      </View>
+    );
+  }
+
+  if (error) return <ErrorScreen message={error} />;
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.surface} />
+      <StatusBar barStyle="dark-content" backgroundColor={T.surface} />
 
-      <View style={[styles.header, { paddingTop: headerPadding + 16 }]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: pt + 16 }]}>
         <View style={styles.headerLeft}>
-          <MatIcon name="chat-processing-outline" size={22} color={COLORS.primary} />
+          <View style={styles.headerIcon}>
+            <MatIcon name="chat-processing-outline" size={17} color={T.primary} />
+          </View>
           <View>
             <Text style={styles.headerTitle}>My Chats</Text>
-            <Text style={styles.headerSub}>{counts.all} conversations</Text>
+            <Text style={styles.headerSub}>
+              {e2eChats.length} expert · {e2uChats.length} broadcast
+            </Text>
           </View>
         </View>
       </View>
 
+      {/* Search */}
       <View style={styles.searchWrap}>
-        <Icon name="search" size={16} color={COLORS.textMuted} />
+        <Icon name="search" size={15} color={T.inactive} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by name..."
-          placeholderTextColor={COLORS.textMuted}
+          placeholder="Search by name or topic..."
+          placeholderTextColor={T.inactive}
           value={search}
-          onChangeText={handleSearch}
+          onChangeText={setSearch}
           returnKeyType="search"
-          clearButtonMode="never"
         />
         {search.length > 0 && (
-          <TouchableOpacity onPress={clearSearch} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Icon name="x" size={15} color={COLORS.textMuted} />
+          <TouchableOpacity
+            onPress={() => setSearch('')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Icon name="x" size={14} color={T.inactive} />
           </TouchableOpacity>
         )}
       </View>
 
-      <View style={styles.tabRow}>
-        {TABS_CONFIG.map((t) => (
-          <TabButton
-            key={t.key}
-            label={t.label}
-            count={counts[t.key]}
-            isActive={tab === t.key}
-            onPress={() => handleTabPress(t.key)}
-          />
-        ))}
-      </View>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        getItemLayout={getItemLayout}
-        ListEmptyComponent={<ListEmptyComponent search={search} tab={tab} />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={7}
-        removeClippedSubviews={Platform.OS === 'android'}
-      />
+      {/* Section List */}
+      {isEmpty ? (
+        <EmptyState search={search} />
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          renderSectionHeader={null}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          stickySectionHeadersEnabled={false}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          SectionSeparatorComponent={() => <View style={{ height: 4 }} />}
+        />
+      )}
     </View>
   );
 }
@@ -370,104 +898,92 @@ export default function ExpertChats({ navigation }) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container  : { flex: 1, backgroundColor: COLORS.bg },
-  centered   : { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 },
+  container: { flex: 1, backgroundColor: T.bg },
+  centered:  { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  listContent: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 100 },
 
   header: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    backgroundColor: T.surface,
+    paddingHorizontal: 18, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: T.primaryBorder,
     ...Platform.select({
-      ios    : { shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+      ios:     { shadowColor: T.primary, shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
       android: { elevation: 2 },
     }),
   },
-  headerLeft : { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrim },
-  headerSub  : { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  headerLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerIcon:  {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: T.primaryLight, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: T.primaryBorder,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: T.textMain },
+  headerSub:   { fontSize: 11, color: T.inactive, marginTop: 1 },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16, marginTop: 14,
-    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 11,
-    borderWidth: 1, borderColor: '#E2E8F0',
-    gap: 10,
+    backgroundColor: T.surface,
+    marginHorizontal: 14, marginTop: 12, marginBottom: 4,
+    borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: T.primaryBorder,
+    gap: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: COLORS.textPrim, padding: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: T.textMain, padding: 0 },
 
-  tabRow: {
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 4, paddingVertical: 10,
+  },
+  sectionIconWrap: {
+    width: 26, height: 26, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '800', flex: 1 },
+  sectionBadge: {
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 10, minWidth: 22, alignItems: 'center',
+  },
+  sectionBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFF' },
+
+  // Card
+  compactCard: {
     flexDirection: 'row',
-    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
-    gap: 6,
-  },
-  tab          : {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 4,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12, paddingVertical: 9,
-    borderWidth: 1, borderColor: 'transparent',
-  },
-  tabActive        : { backgroundColor: COLORS.primaryBg, borderColor: COLORS.primaryBdr },
-  tabText          : { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
-  tabTextActive    : { color: COLORS.primary },
-  tabBadge         : { backgroundColor: '#E2E8F0', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 8 },
-  tabBadgeActive   : { backgroundColor: COLORS.primaryBdr },
-  tabBadgeText     : { fontSize: 10, fontWeight: '700', color: COLORS.textMuted },
-  tabBadgeTextActive: { color: COLORS.primary },
-
-  card: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 16, padding: 14,
-    marginBottom: CARD_MARGIN,
-    borderWidth: 1, borderColor: COLORS.border,
+    alignItems: 'center',
+    backgroundColor: T.surface,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingRight: 12,
+    paddingLeft: 0,
+    borderWidth: 1, borderColor: T.primaryBorder,
+    overflow: 'hidden',
+    gap: 10,
     ...Platform.select({
-      ios    : { shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-      android: { elevation: 1 },
+      ios:     { shadowColor: T.primary, shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 2 },
     }),
   },
-  statusDot  : { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-  avatar     : {
-    width: 46, height: 46, borderRadius: 23,
+  accentBar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
+  avatar: {
+    width: 40, height: 40, borderRadius: 12,
     justifyContent: 'center', alignItems: 'center',
-    marginRight: 12, position: 'relative',
+    position: 'relative',
   },
-  avatarText : { fontSize: 17, fontWeight: '800', color: COLORS.surface },
-  pendingRing: {
-    position: 'absolute', top: -2, left: -2,
-    width: 50, height: 50, borderRadius: 25,
-    borderWidth: 2, borderColor: '#F59E0B',
+  avatarText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  activeDot: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: T.active, borderWidth: 1.5,
   },
-  cardContent   : { flex: 1, gap: 3 },
-  cardTopRow    : { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardBottomRow : { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardTagRow    : { flexDirection: 'row', gap: 6, marginTop: 2 },
-  userName      : { fontSize: 14, fontWeight: '700', color: COLORS.textPrim, flex: 1, marginRight: 8 },
-  time          : { fontSize: 11, color: COLORS.textMuted },
-  lastMsg       : { fontSize: 12, color: COLORS.textSec, flex: 1 },
-  unreadBadge   : {
-    backgroundColor: COLORS.primary,
-    width: 18, height: 18, borderRadius: 9,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  unreadText    : { fontSize: 10, fontWeight: '800', color: COLORS.surface },
-  categoryTag   : {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: COLORS.primaryBg,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
-  },
-  categoryTagText: { fontSize: 9, color: COLORS.primary, fontWeight: '600' },
-  pendingTag     : { backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  pendingTagText : { fontSize: 9, color: '#D97706', fontWeight: '700' },
+  cardContent: { flex: 1, gap: 3 },
+  cardRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardName:    { fontSize: 13, fontWeight: '700', color: T.textMain, flex: 1, marginRight: 6 },
+  cardTime:    { fontSize: 10, color: T.inactive, fontWeight: '500' },
+  cardTopic:   { fontSize: 11, fontWeight: '600' },
+  cardMsg:     { fontSize: 12, color: T.textSub },
 
-  empty    : { alignItems: 'center', paddingTop: 80, paddingHorizontal: 32 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: COLORS.textPrim, marginTop: 16, marginBottom: 6 },
-  emptySub : { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 },
-
-  errorTitle: { fontSize: 17, fontWeight: '700', color: COLORS.textPrim, marginTop: 16, marginBottom: 6 },
-  errorSub  : { fontSize: 13, color: COLORS.textMuted, textAlign: 'center' },
+  // Empty
+  empty:      { alignItems: 'center', paddingTop: 70, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: T.textMain, marginTop: 14, marginBottom: 5 },
+  emptySub:   { fontSize: 12, color: T.inactive, textAlign: 'center', lineHeight: 18 },
 });

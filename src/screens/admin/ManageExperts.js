@@ -798,7 +798,7 @@ export default function ManageExperts() {
               {/* ── Category & Specialization ─────────────────────────── */}
               <SectionBox
                 iconName="layers"
-                title="Category & Specialization"
+                title="Services & Specializations"
               >
                 <FieldLabel label="Service Category" required />
 
@@ -811,7 +811,7 @@ export default function ManageExperts() {
                   options={categories}
                   selectedId={form.categoryId}
                   onSelect={handleSelectCategory}
-                  emptyText="No categories available. Please create categories first."
+                  emptyText="No Services available. Please create Services first."
                 />
 
                 {/* Subcategory — only shown after a category is chosen */}
@@ -823,7 +823,7 @@ export default function ManageExperts() {
                       options={subcategories}
                       selectedId={form.subcategoryId}
                       onSelect={handleSelectSubcategory}
-                      emptyText="No specializations available for this category."
+                      emptyText="No specializations available for this Services."
                     />
                   </>
                 )}

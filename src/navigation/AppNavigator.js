@@ -1,139 +1,4 @@
-// // import React, { useEffect, useState } from 'react';
-// // import { NavigationContainer } from '@react-navigation/native';
-// // import { useDispatch, useSelector } from 'react-redux';
-// // import auth from '@react-native-firebase/auth';
-// // import firestore from '@react-native-firebase/firestore';
-// // import { setUser, setRole, logout } from '../store/slices/authSlice';
-
-// // import AuthNavigator   from './AuthNavigator';
-// // import AdminNavigator  from './AdminNavigator';
-// // import ExpertNavigator from './ExpertNavigator';
-// // import UserNavigator   from './UserNavigator';
-// // import SplashScreen    from '../screens/auth/SplashScreen';
-
-// // export default function AppNavigator() {
-// //   const dispatch = useDispatch();
-// //   const { role } = useSelector((state) => state.auth);
-// //   const [loading, setLoading] = useState(true);
-// //   const [currentUser, setCurrentUser] = useState(null);
-
-// //   useEffect(() => {
-// //     const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
-// //       if (firebaseUser) {
-// //         const doc = await firestore()
-// //           .collection('users')
-// //           .doc(firebaseUser.uid)
-// //           .get();
-
-// //         if (doc.exists) {
-// //           const data = doc.data();
-// //           dispatch(setUser({ uid: firebaseUser.uid, email: firebaseUser.email }));
-// //           dispatch(setRole(data.role));
-// //         }
-// //         setCurrentUser(firebaseUser);
-// //       } else {
-// //         setCurrentUser(null);
-// //         dispatch(logout());
-// //       }
-// //       setLoading(false);
-// //     });
-
-// //     return unsubscribe;
-// //   }, []);
-
-// //   if (loading) return <SplashScreen />;
-
-// //   return (
-// //     <NavigationContainer>
-// //       {!currentUser ? (
-// //         <AuthNavigator />
-// //       ) : role === 'admin' ? (
-// //         <AdminNavigator />
-// //       ) : role === 'expert' ? (
-// //         <ExpertNavigator />
-// //       ) : (
-// //         <UserNavigator />
-// //       )}
-// //     </NavigationContainer>
-// //   );
-// // }
-
-
-// import React, { useEffect, useState } from 'react';
-// import { NavigationContainer } from '@react-navigation/native';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { getApp } from '@react-native-firebase/app';
-// import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
-// import { getFirestore, doc, getDoc } from '@react-native-firebase/firestore';
-// import { setUser, setRole, logout } from '../store/slices/authSlice';
-// import AuthNavigator   from './AuthNavigator';
-// import AdminNavigator  from './AdminNavigator';
-// import ExpertNavigator from './ExpertNavigator';
-// import UserNavigator   from './UserNavigator';
-// import SplashScreen    from '../screens/auth/SplashScreen';
-
-// export default function AppNavigator() {
-//   const dispatch = useDispatch();
-//   const { role } = useSelector((state) => state.auth);
-//   const [loading, setLoading]         = useState(true);
-//   const [currentUser, setCurrentUser] = useState(null);
-
-//   useEffect(() => {
-//     const app  = getApp();
-//     const auth = getAuth(app);
-//     const db   = getFirestore(app);
-
-//     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-//       console.log('🔥 Auth state changed:', firebaseUser?.email ?? 'null');
-
-//       if (firebaseUser) {
-//         try {
-//           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-//           console.log('📄 doc exists:', userDoc.exists());
-
-//           if (userDoc.exists()) {
-//             const data = userDoc.data();
-//             console.log('👤 Role:', data.role);
-//             dispatch(setUser({ uid: firebaseUser.uid, email: firebaseUser.email }));
-//             dispatch(setRole(data.role));
-//           } else {
-//             dispatch(setRole('user'));
-//           }
-//         } catch (err) {
-//           console.error('❌ Firestore error:', err.message);
-//         }
-//         setCurrentUser(firebaseUser);
-//       } else {
-//         setCurrentUser(null);
-//         dispatch(logout());
-//       }
-
-//       setLoading(false); // ✅ Hamesha false karo
-//     });
-
-//     return unsubscribe;
-//   }, []);
-
-//   // ✅ Sirf loading tak SplashScreen dikhao
-//   if (loading) return <SplashScreen />;
-
-//   return (
-//     <NavigationContainer>
-//       {!currentUser ? (
-//         <AuthNavigator />
-//       ) : role === 'admin' ? (
-//         <AdminNavigator />
-//       ) : role === 'expert' ? (
-//         <ExpertNavigator />
-//       ) : (
-//         <UserNavigator />
-//       )}
-//     </NavigationContainer>
-//   );
-// }
-
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getApp } from '@react-native-firebase/app';
@@ -150,18 +15,120 @@ import {
   deleteDoc,
 } from '@react-native-firebase/firestore';
 import { setUser, setRole, logout } from '../store/slices/authSlice';
+import notifee, { EventType } from '@notifee/react-native';
+
 import AuthNavigator   from './AuthNavigator';
 import AdminNavigator  from './AdminNavigator';
 import ExpertNavigator from './ExpertNavigator';
 import UserNavigator   from './UserNavigator';
 import SplashScreen    from '../screens/auth/SplashScreen';
 
+import {
+  setupBackgroundNotification,
+  setupForegroundNotification,
+  setupTokenRefresh,
+} from '../utils/notificationService';
+
 export default function AppNavigator() {
   const dispatch = useDispatch();
   const { role } = useSelector((state) => state.auth);
-  const [loading,     setLoading]     = useState(true);
+  const [loading, setLoading]         = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
 
+  const navigationRef = useRef(null);
+
+  const roleRef = useRef(role);
+  useEffect(() => { roleRef.current = role; }, [role]);
+
+  // ── Navigate helper ───────────────────────────────────────────────────────
+  const handleNotificationNavigation = useCallback((data) => {
+    if (!data?.chatId) return;
+
+    const currentRole = roleRef.current;
+    const isBroadcast = data.isBroadcast === 'true';
+    const expertIds   = (() => {
+      try { return data.expertIds ? JSON.parse(data.expertIds) : []; }
+      catch (_) { return []; }
+    })();
+
+    console.log('[NAV] role:', currentRole, '| chatId:', data.chatId);
+
+    if (currentRole === 'expert') {
+      navigationRef.current?.navigate('Chats', {
+        screen: 'ExpertReplyChat',
+        params: {
+          chatId:          data.chatId,
+          userName:        data.userName        || 'User',
+          isBroadcast:     isBroadcast,
+          subcategoryName: data.subcategoryName || '',
+          categoryName:    data.categoryName    || '',
+          expertIds,
+        },
+      });
+
+    } else if (currentRole === 'admin') {
+      navigationRef.current?.navigate('Chats', {
+        screen: 'AdminChat',
+        params: { openChatId: data.chatId },
+      });
+
+    } else {
+      navigationRef.current?.navigate('Home', {
+        screen: 'MainChat',
+        params: {
+          chatId:          data.chatId,
+          expertName:      data.categoryName || 'Chat',
+          expertId:        null,
+          isBroadcast:     true,
+          subcategoryName: data.subcategoryName || null,
+          categoryName:    data.categoryName    || null,
+          expertIds,
+        },
+      });
+    }
+  }, []);
+
+  // ── FCM + Notifee Setup ───────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribeTokenRefresh = setupTokenRefresh();
+
+    // FCM: background + quit state tap
+    setupBackgroundNotification((remoteMessage, state) => {
+      console.log(`[FCM] Opened from ${state}:`, remoteMessage.data);
+      if (state === 'quit') {
+        setTimeout(() => handleNotificationNavigation(remoteMessage.data), 800);
+      } else {
+        handleNotificationNavigation(remoteMessage.data);
+      }
+    });
+
+    // FCM: foreground — notifee shows the system banner automatically
+    const unsubscribeForeground = setupForegroundNotification((remoteMessage) => {
+      console.log('[FCM] Foreground message received:', remoteMessage.data);
+      // No manual navigation here — user will tap the notification
+    });
+
+    // ✅ NOTIFEE: foreground tap handler
+    // When user taps notifee notification while app is open
+    const unsubscribeNotifee = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        console.log('[NOTIFEE] Foreground tap:', detail.notification?.data);
+        handleNotificationNavigation(detail.notification?.data);
+      }
+
+      if (type === EventType.DISMISSED) {
+        console.log('[NOTIFEE] Notification dismissed:', detail.notification?.id);
+      }
+    });
+
+    return () => {
+      unsubscribeTokenRefresh();
+      unsubscribeForeground();
+      unsubscribeNotifee(); // ✅ cleanup notifee listener
+    };
+  }, [handleNotificationNavigation]);
+
+  // ── Auth State ────────────────────────────────────────────────────────────
   useEffect(() => {
     const app  = getApp();
     const auth = getAuth(app);
@@ -172,25 +139,19 @@ export default function AppNavigator() {
 
       if (firebaseUser) {
         try {
-          // ── Step 1: UID se direct lookup ──
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           console.log('📄 doc exists:', userDoc.exists());
 
           if (userDoc.exists()) {
-            // ── Normal case: doc found ──
             const data = userDoc.data();
             console.log('👤 Role:', data.role);
             dispatch(setUser({ uid: firebaseUser.uid, phone: firebaseUser.phoneNumber }));
             dispatch(setRole(data.role));
 
           } else {
-            // ── Step 2: Admin-created user — phone se dhundo ──
             console.log('🔍 UID se nahi mila, phone se try karo:', firebaseUser.phoneNumber);
 
-            const q     = query(
-              collection(db, 'users'),
-              where('phone', '==', firebaseUser.phoneNumber),
-            );
+            const q     = query(collection(db, 'users'), where('phone', '==', firebaseUser.phoneNumber));
             const qSnap = await getDocs(q);
 
             if (!qSnap.empty) {
@@ -198,7 +159,6 @@ export default function AppNavigator() {
               const data   = oldDoc.data();
               console.log('✅ Phone se mila, role:', data.role);
 
-              // Naye Auth UID pe migrate karo
               await setDoc(doc(db, 'users', firebaseUser.uid), { ...data });
               await deleteDoc(doc(db, 'users', oldDoc.id));
               console.log('✅ Migration complete');
@@ -207,19 +167,16 @@ export default function AppNavigator() {
               dispatch(setRole(data.role));
 
             } else {
-              // Genuinely new user
               console.log('⚠️ Koi doc nahi mila, default user role');
               dispatch(setRole('user'));
             }
           }
         } catch (err) {
           console.error('❌ Auth state error:', err.message);
-          dispatch(setRole('user'));
         }
 
         setCurrentUser(firebaseUser);
       } else {
-        // ── Logged out ──
         console.log('👋 User logged out');
         setCurrentUser(null);
         dispatch(logout());
@@ -229,12 +186,12 @@ export default function AppNavigator() {
     });
 
     return unsubscribe;
-  }, []);
+  }, [dispatch]);
 
   if (loading) return <SplashScreen />;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {!currentUser ? (
         <AuthNavigator />
       ) : role === 'admin' ? (

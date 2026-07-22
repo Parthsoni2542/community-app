@@ -1,3 +1,5 @@
+// ExpertNavigator.jsx
+
 import React, { memo, useCallback } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,10 +9,15 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import Icon    from 'react-native-vector-icons/Feather';
 import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import ExpertDashboard from '../screens/expert/ExpertDashboard';
-import ExpertChats     from '../screens/expert/ExpertChats';
-import ExpertReplyChat from '../screens/expert/ExpertReplyChat';
-import ExpertProfile   from '../screens/expert/ExpertProfile';
+import ExpertDashboard       from '../screens/expert/ExpertDashboard';
+import ExpertChats           from '../screens/expert/ExpertChats';
+import ExpertReplyChat       from '../screens/expert/ExpertReplyChat';
+import ExpertProfile         from '../screens/expert/ExpertProfile';
+import SubCategoryListScreen from '../screens/user/SubCategoryListScreen';
+import ExpertListScreen      from '../screens/user/ExpertListScreen'; // aapki existing screen
+import ExpertDetailScreen from '../screens/user/ExpertDetailScreen';
+import BrodcastChatScreen from '../screens/user/BrodcastChatScreen';
+import BrodcastExpertReplyChat from '../screens/expert/BrodcastExpertReplyChat';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -25,28 +32,51 @@ const COLORS = {
 
 const TAB_HEIGHT_BASE = Platform.OS === 'ios' ? 56 : 60;
 
-// Hide tab bar when ExpertReplyChat is focused inside ChatsStack
-const HIDE_TAB_ROUTES = new Set(['ExpertReplyChat']);
+// Tab bar in routes inn screens par hide hogi
+const HIDE_TAB_ROUTES = new Set([
+  'ExpertReplyChat',
+  'SubCategoryList',
+  'ExpertList',
+  'MainChat'
+]);
 
-// ── Stack Navigator ───────────────────────────────────────────────────────────
+// ── Stack Navigators ──────────────────────────────────────────────────────────
 
-const ChatsStackNav = createStackNavigator();
+const ChatsStackNav     = createStackNavigator();
+const DashboardStackNav = createStackNavigator();
 
 function ChatsStack() {
   return (
     <ChatsStackNav.Navigator screenOptions={{ headerShown: false }}>
       <ChatsStackNav.Screen name="ExpertChatsList" component={ExpertChats}     />
       <ChatsStackNav.Screen name="ExpertReplyChat" component={ExpertReplyChat} />
+       <ChatsStackNav.Screen name="MainChat"      component={BrodcastExpertReplyChat}      />
+
     </ChatsStackNav.Navigator>
+  );
+}
+
+// Dashboard stack — category browse flow
+function DashboardStack() {
+  return (
+    <DashboardStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <DashboardStackNav.Screen name="ExpertHome"      component={ExpertDashboard}       />
+      <DashboardStackNav.Screen name="SubCategoryList" component={SubCategoryListScreen} />
+      <DashboardStackNav.Screen name="ExpertList"      component={ExpertListScreen}      />
+      <DashboardStackNav.Screen name="ExpertDetail"      component={ExpertDetailScreen}      />
+      <DashboardStackNav.Screen name="MainChat"      component={BrodcastExpertReplyChat}      />
+      
+      
+    </DashboardStackNav.Navigator>
   );
 }
 
 // ── Tab Icons ─────────────────────────────────────────────────────────────────
 
 const TAB_ICONS = {
-  Dashboard: (s, c) => <Icon    name="grid"              size={s} color={c} />,
-  Chats    : (s, c) => <MatIcon name="chat-outline"      size={s} color={c} />,
-  Profile  : (s, c) => <Icon    name="user"              size={s} color={c} />,
+  Dashboard: (s, c) => <Icon    name="grid"         size={s} color={c} />,
+  Chats    : (s, c) => <MatIcon name="chat-outline" size={s} color={c} />,
+  Profile  : (s, c) => <Icon    name="user"         size={s} color={c} />,
 };
 
 const TabIcon = memo(({ routeName, focused }) => {
@@ -59,13 +89,11 @@ const TabIcon = memo(({ routeName, focused }) => {
   );
 });
 
-// ── Tab Bar Background ────────────────────────────────────────────────────────
-
 const TabBarBackground = memo(({ height }) => (
   <View style={[styles.tabBarBg, { height }]} />
 ));
 
-// ── Navigator ─────────────────────────────────────────────────────────────────
+// ── Main Navigator ────────────────────────────────────────────────────────────
 
 const Tab = createBottomTabNavigator();
 
@@ -107,7 +135,7 @@ export default function ExpertNavigator() {
     <Tab.Navigator screenOptions={screenOptions}>
       <Tab.Screen
         name="Dashboard"
-        component={ExpertDashboard}
+        component={DashboardStack}
         options={{ tabBarLabel: 'Dashboard' }}
       />
       <Tab.Screen
@@ -137,11 +165,9 @@ const styles = StyleSheet.create({
     elevation      : 0,
     shadowOpacity  : 0,
   },
-
   tabBarHidden: {
     display: 'none',
   },
-
   tabBarBg: {
     position       : 'absolute',
     bottom         : 0,
@@ -156,17 +182,14 @@ const styles = StyleSheet.create({
     shadowOffset   : { width: 0, height: -6 },
     elevation      : 20,
   },
-
   tabItem: {
     paddingTop: Platform.OS === 'ios' ? 10 : 8,
   },
-
   tabLabel: {
     fontSize     : 11,
     fontWeight   : '700',
     letterSpacing: 0.2,
   },
-
   iconWrap: {
     width         : 52,
     height        : 36,
@@ -174,11 +197,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems    : 'center',
   },
-
   iconWrapActive: {
     backgroundColor: COLORS.activeBg,
   },
-
   activeDot: {
     position       : 'absolute',
     bottom         : 3,

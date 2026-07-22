@@ -10,7 +10,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   getFirestore, collection, onSnapshot, query, orderBy,
-  getDoc, doc,
+  getDoc, doc, getDocs, limit,
 } from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
 
@@ -28,7 +28,7 @@ const CARD_COLORS = [
 ];
 
 // ── Header component (memoized — never re-renders unless props change) ────────
-const ListHeader = React.memo(({ greeting, firstName, search, onSearch, onClear, searchFocused, onFocus, onBlur, count, fadeAnim, slideAnim }) => (
+const ListHeader = React.memo(({ greeting, firstName, search, onSearch, onClear, searchFocused, onFocus, onBlur, count, fadeAnim, slideAnim,navigation }) => (
   <>
     {/* Gradient header */}
     <LinearGradient
@@ -43,10 +43,10 @@ const ListHeader = React.memo(({ greeting, firstName, search, onSearch, onClear,
           <Text style={styles.greetingName}>{firstName} 👋</Text>
         </View>
         <View style={styles.headerRight}>
-          <View style={styles.notifBtn}>
+          <TouchableOpacity style={styles.notifBtn} onPress={()=>{navigation.navigate('NotificationScreen')}}>
             <Icon name="bell" size={20} color="rgba(255,255,255,0.85)" />
             <View style={styles.notifDot} />
-          </View>
+          </TouchableOpacity>
         </View>
       </Animated.View>
 
@@ -125,7 +125,7 @@ const ListHeader = React.memo(({ greeting, firstName, search, onSearch, onClear,
     {/* Section label */}
     <View style={styles.sectionRow}>
       <View>
-        <Text style={styles.sectionTitle}>Browse Categories</Text>
+        <Text style={styles.sectionTitle}>Browse Services</Text>
         <Text style={styles.sectionSub}>{count} services available</Text>
       </View>
       {search.length > 0 && (
@@ -166,9 +166,6 @@ const CategoryRow = React.memo(({ item, index, onPress }) => {
           </Text>
         )}
       </View>
-      {/* <View style={[styles.catIconWrap, { backgroundColor: palette.border + '55' }]}>
-        <Text style={styles.catEmoji}>{item.icon || '📁'}</Text>
-      </View> */}
       <View style={styles.catTextWrap}>
         <Text style={styles.catName}>{item.name}</Text>
         {item.description ? (
@@ -190,6 +187,13 @@ export default function HomeScreen({ navigation }) {
   const [userName, setUserName] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // ── Smart-routing flag map ───────────────────────────────────────────────
+  // Key: categoryId, Value: true (has subcategories) | false (no subcategories)
+  // | undefined (not checked yet, e.g. still loading). Populated right after
+  // categories load, so by the time a user actually taps a row the answer is
+  // already known and there's no navigation delay.
+  const [hasSubcatMap, setHasSubcatMap] = useState({});
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(28)).current;
   const uid = getAuth().currentUser?.uid;
@@ -203,9 +207,10 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     const db = getFirestore();
-    const q = query(collection(db, 'categories'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'categories'), orderBy('subcategoryCount', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
-      setCategories(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const cats = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setCategories(cats);
       setLoading(false);
     });
     return unsub;
@@ -217,6 +222,33 @@ export default function HomeScreen({ navigation }) {
       if (d.exists()) setUserName(d.data().name || '');
     });
   }, [uid]);
+
+  // ── Pre-check subcategory existence for every loaded category ──────────────
+  // Runs once per new category id (skips ones already checked). Uses
+  // limit(1) on the subcollection so each check is a single cheap read,
+  // not a full subcollection fetch. Non-blocking: list renders immediately
+  // with loading=false above, this just fills in routing info as it resolves.
+  useEffect(() => {
+    if (!categories.length) return;
+    const db = getFirestore();
+
+    categories.forEach((cat) => {
+      // Skip if we've already determined this category's flag.
+      if (hasSubcatMap[cat.id] !== undefined) return;
+
+      const subColRef = collection(db, 'categories', cat.id, 'subcategories');
+      getDocs(query(subColRef, limit(1)))
+        .then((snap) => {
+          setHasSubcatMap((prev) => ({ ...prev, [cat.id]: !snap.empty }));
+        })
+        .catch((err) => {
+          console.log('[HomeScreen] subcategory check failed for', cat.id, err.code, err.message);
+          // On error, default to false so we fail safe to the older
+          // direct-to-ExpertList behavior rather than getting stuck.
+          setHasSubcatMap((prev) => ({ ...prev, [cat.id]: false }));
+        });
+    });
+  }, [categories, hasSubcatMap]);
 
   // ── Derived values (memoized) ──────────────────────────────────────────────
   const greeting = useMemo(() => {
@@ -248,19 +280,36 @@ export default function HomeScreen({ navigation }) {
 
   const keyExtractor = useCallback((item) => item.id, []);
 
+  // ── Smart navigation ────────────────────────────────────────────────────────
+  // If hasSubcatMap[item.id] is true -> SubCategoryList (existing flow).
+  // If it's explicitly false -> go straight to ExpertList (old flow, all
+  // experts in the category, no subcategory filter).
+  // If it's still undefined (check hasn't resolved yet, e.g. a very fast
+  // tap right after load) -> fall back to ExpertList too, since that's the
+  // safe default that always shows *something* rather than blocking the tap.
+  const handleCategoryPress = useCallback((item) => {
+    const hasSub = hasSubcatMap[item.id];
+    if (hasSub) {
+      navigation.navigate('SubCategoryList', {
+        categoryId: item.id,
+        categoryName: item.name,
+        categoryIcon: item.icon,
+      });
+    } else {
+      navigation.navigate('ExpertList', {
+        categoryId: item.id,
+        categoryName: item.name,
+      });
+    }
+  }, [navigation, hasSubcatMap]);
+
   const renderItem = useCallback(({ item, index }) => (
     <CategoryRow
       item={item}
       index={index}
-      onPress={() =>
-        navigation.navigate('ExpertList', {
-          categoryId: item.id,
-          categoryName: item.name,
-          categoryIcon: item.icon,
-        })
-      }
+      onPress={() => handleCategoryPress(item)}
     />
-  ), [navigation]);
+  ), [handleCategoryPress]);
 
   const getItemLayout = useCallback((_, index) => ({
     length: 88,     // estimated row height (icon 52 + padding 14*2 + gap ~8)
@@ -281,6 +330,8 @@ export default function HomeScreen({ navigation }) {
       count={filtered.length}
       fadeAnim={fadeAnim}
       slideAnim={slideAnim}
+      navigation={navigation}
+      
     />
   ), [greeting, firstName, search, handleSearch, handleClear, searchFocused,
     handleFocus, handleBlur, filtered.length, fadeAnim, slideAnim]);

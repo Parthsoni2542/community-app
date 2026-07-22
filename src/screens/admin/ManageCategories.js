@@ -1145,6 +1145,7 @@ export default function ManageCategories() {
       name       : catName.trim(),
       icon       : remoteImageUrl || null,
       description: catDesc.trim(),
+      subcategoryCount:0
     };
 
     try {

@@ -1,123 +1,229 @@
-import messaging  from '@react-native-firebase/messaging';
-import auth       from '@react-native-firebase/auth';
-import { Alert, Platform, PermissionsAndroid } from 'react-native';
-import {
-  getFirestore, doc, updateDoc,
-} from '@react-native-firebase/firestore';
+/**
+ * fcmService.js
+ * Firebase Cloud Messaging + Notifee — production-ready helper.
+ */
 
-// ✅ Android 13+ Permission maango
-const requestAndroidPermission = async () => {
-  if (Platform.OS === 'android' && Platform.Version >= 33) {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      {
-        title  : 'Notification Permission',
-        message: 'Community Advisory app ko notifications bhejne ki permission chahiye',
-        buttonPositive: 'Allow',
-        buttonNegative: 'Deny',
-      },
-    );
-    return granted === PermissionsAndroid.RESULTS.GRANTED;
-  }
-  return true; // Android 12 aur neeche — permission automatic
+import messaging from '@react-native-firebase/messaging';
+import { getAuth } from '@react-native-firebase/auth';
+import { getFirestore, doc, setDoc } from '@react-native-firebase/firestore';
+import { Platform, PermissionsAndroid } from 'react-native';
+import notifee, { AndroidImportance, AndroidStyle } from '@notifee/react-native';
+
+// ─── Internal helpers ────────────────────────────────────────────────────────
+
+const _requestAndroidPermission = async () => {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return true;
+
+  const result = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    {
+      title: 'Notification Permission',
+      message: 'Allow notifications to stay updated on your consultations and community activity.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Deny',
+    },
+  );
+
+  return result === PermissionsAndroid.RESULTS.GRANTED;
 };
 
-// ✅ FCM Token Firestore mein save karo
+/**
+ * Create (or update) the default Android notification channel.
+ * Safe to call multiple times — notifee is idempotent for channels.
+ */
+export const createNotificationChannel = async () => {
+  if (Platform.OS !== 'android') return;
+
+  await notifee.createChannel({
+    id:          'default',
+    name:        'General Notifications',
+    importance:  AndroidImportance.HIGH, // shows heads-up banner
+    sound:       'default',
+    vibration:   true,
+  });
+
+  // Extra channel for chat messages (optional but recommended)
+  await notifee.createChannel({
+    id:          'chat',
+    name:        'Chat Messages',
+    importance:  AndroidImportance.HIGH,
+    sound:       'default',
+    vibration:   true,
+  });
+};
+
+/**
+ * Display a local notification via notifee.
+ * Works in FOREGROUND + background + quit state.
+ */
+export const displayNotification = async (remoteMessage) => {
+  try {
+    const currentUid = getAuth().currentUser?.uid;
+    const senderUid  = remoteMessage.data?.senderUid; // ← backend se senderUid bhejo
+
+    // ✅ Agar current user hi sender hai to notification mat dikhao
+    if (currentUid && senderUid && currentUid === senderUid) {
+      console.log('[NOTIFEE] Skipping own message notification.');
+      return;
+    }
+
+    const title     = remoteMessage.notification?.title ?? remoteMessage.data?.title ?? 'New Message';
+    const body      = remoteMessage.notification?.body  ?? remoteMessage.data?.body  ?? '';
+    const data      = remoteMessage.data ?? {};
+    const channelId = data.chatId ? 'chat' : 'default';
+
+    await notifee.displayNotification({
+      title,
+      body,
+      data,
+      android: {
+        channelId,
+        smallIcon:   'ic_launcher',
+        color:       '#6C63FF',
+        pressAction: { id: 'default' },
+        sound:       'default',
+      },
+      ios: {
+        sound: 'default',
+        foregroundPresentationOptions: {
+          alert: true,
+          badge: true,
+          sound: true,
+        },
+      },
+    });
+  } catch (e) {
+    console.error('[NOTIFEE] displayNotification failed:', e.message);
+  }
+};
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
 export const saveFCMToken = async () => {
   try {
-    const uid = auth().currentUser?.uid;
+    const uid = getAuth().currentUser?.uid;
     if (!uid) {
-      console.log('⚠️ User not logged in — token not saved');
-      return;
+      console.warn('[FCM] saveFCMToken called with no signed-in user — skipped.');
+      return { success: false, error: 'no_user' };
     }
 
     const token = await messaging().getToken();
     if (!token) {
-      console.log('⚠️ FCM token not available');
-      return;
+      console.warn('[FCM] getToken() returned empty — device may not support FCM.');
+      return { success: false, error: 'no_token' };
     }
 
-    console.log('📱 FCM Token:', token);
-
     const db = getFirestore();
-    await updateDoc(doc(db, 'users', uid), {
-      fcmToken : token,
-      platform : Platform.OS,
-    });
+    await setDoc(
+      doc(db, 'users', uid),
+      {
+        fcmToken:        token,
+        fcmTokenUpdated: new Date().toISOString(),
+        platform:        Platform.OS,
+      },
+      { merge: true },
+    );
 
-    console.log('✅ FCM Token saved!');
-    return token;
+    console.log('[FCM] Token saved for UID:', uid);
+    return { success: true, token };
+
   } catch (e) {
-    console.error('❌ FCM Token save error:', e.message);
+    console.error('[FCM] saveFCMToken failed:', e.code, e.message);
+    return { success: false, error: e.code ?? e.message };
   }
 };
 
-// ✅ Main Permission Request Function
 export const requestNotificationPermission = async () => {
   try {
-    // Android 13+ permission
-    const androidGranted = await requestAndroidPermission();
+    // Step 1: Android 13+ runtime permission
+    const androidGranted = await _requestAndroidPermission();
     if (!androidGranted) {
-      console.log('❌ Android notification permission denied');
-      return false;
+      console.log('[FCM] Android notification permission denied by user.');
+      return { success: false, error: 'android_denied' };
     }
 
-    // iOS + Firebase permission
-    const authStatus = await messaging().requestPermission();
-    const enabled    =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-    if (enabled) {
-      console.log('✅ Notification permission granted, status:', authStatus);
-      await saveFCMToken();
-      return true;
+    // Step 2: iOS permission via notifee (handles both FCM + local)
+    if (Platform.OS === 'ios') {
+      const settings = await notifee.requestPermission();
+      const granted  = settings.authorizationStatus >= 1; // AUTHORIZED or PROVISIONAL
+      if (!granted) {
+        console.log('[FCM] iOS permission denied via notifee.');
+        return { success: false, error: 'ios_denied' };
+      }
     } else {
-      console.log('❌ Notification permission denied, status:', authStatus);
-      return false;
+      // Android: also request via FCM messaging (belt + suspenders)
+      const authStatus = await messaging().requestPermission();
+      const granted =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!granted) {
+        return { success: false, error: 'android_fcm_denied' };
+      }
     }
+
+    // Step 3: Create Android channels
+    await createNotificationChannel();
+
+    console.log('[FCM] Permission granted.');
+    return await saveFCMToken();
+
   } catch (e) {
-    console.error('❌ Permission error:', e.message);
-    return false;
+    console.error('[FCM] requestNotificationPermission failed:', e.code, e.message);
+    return { success: false, error: e.code ?? e.message };
   }
 };
 
-// ✅ Foreground notification — App khuli ho tab
-export const setupForegroundNotification = () => {
-  const unsubscribe = messaging().onMessage(async (remoteMessage) => {
-    console.log('📩 Foreground notification received:', remoteMessage);
+export const setupTokenRefresh = () => {
+  return messaging().onTokenRefresh(async (newToken) => {
+    console.log('[FCM] Token refreshed.');
+    const uid = getAuth().currentUser?.uid;
+    if (!uid) return;
 
-    // Alert.alert(
-    //   remoteMessage.notification?.title || '🔔 New Notification',
-    //   remoteMessage.notification?.body  || '',
-    //   [{ text: 'OK', style: 'default' }],
-    // );
-  });
-  return unsubscribe;
-};
-
-// ✅ Background notification — App band ho tab
-export const setupBackgroundNotification = () => {
-  messaging().onNotificationOpenedApp((remoteMessage) => {
-    console.log('📩 App background mein thi, notification tap kiya:', remoteMessage);
-  });
-
-  messaging().getInitialNotification().then((remoteMessage) => {
-    if (remoteMessage) {
-      console.log('📩 App quit thi, notification se khuli:', remoteMessage);
+    try {
+      const db = getFirestore();
+      await setDoc(
+        doc(db, 'users', uid),
+        {
+          fcmToken:        newToken,
+          fcmTokenUpdated: new Date().toISOString(),
+          platform:        Platform.OS,
+        },
+        { merge: true },
+      );
+      console.log('[FCM] Refreshed token saved for UID:', uid);
+    } catch (e) {
+      console.error('[FCM] Token refresh save failed:', e.code, e.message);
     }
   });
 };
 
-// ✅ Token Refresh — Token change hone par update karo
-export const setupTokenRefresh = () => {
-  const unsubscribe = messaging().onTokenRefresh(async (newToken) => {
-    console.log('🔄 FCM Token refreshed:', newToken);
-    const uid = auth().currentUser?.uid;
-    if (!uid) return;
-    const db = getFirestore();
-    await updateDoc(doc(db, 'users', uid), { fcmToken: newToken });
-    console.log('✅ Refreshed token saved!');
+/**
+ * Foreground FCM listener — shows system notification via notifee.
+ * Returns unsubscribe function.
+ */
+export const setupForegroundNotification = (onMessage) => {
+  return messaging().onMessage(async (remoteMessage) => {
+    console.log('[FCM] Foreground message:', remoteMessage.messageId);
+
+    // ✅ Show real system notification even while app is open
+    await displayNotification(remoteMessage);
+
+    onMessage?.(remoteMessage);
   });
-  return unsubscribe;
+};
+
+export const setupBackgroundNotification = (onOpen) => {
+  // App was in background, user tapped notification
+  messaging().onNotificationOpenedApp((remoteMessage) => {
+    console.log('[FCM] Opened from background:', remoteMessage.messageId);
+    onOpen?.(remoteMessage, 'background');
+  });
+
+  // App was fully quit, user tapped notification
+  messaging().getInitialNotification().then((remoteMessage) => {
+    if (remoteMessage) {
+      console.log('[FCM] Opened from quit state:', remoteMessage.messageId);
+      onOpen?.(remoteMessage, 'quit');
+    }
+  });
 };

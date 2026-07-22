@@ -123,7 +123,7 @@
 //         </TouchableOpacity>
 //         <View style={{ flex: 1 }}>
 //           <View style={styles.headerTop}>
-            
+
 //             <Text style={styles.headerTitle}>{categoryName}</Text>
 //           </View>
 //           <Text style={styles.headerSub}>{subcategories.length} subcategories</Text>
@@ -337,12 +337,12 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { useSafeAreaInsets }  from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import Icon    from 'react-native-vector-icons/Feather';
+import Icon from 'react-native-vector-icons/Feather';
 import MatIcon from 'react-native-vector-icons/MaterialCommunityIcons';
-import ImageCropPicker        from 'react-native-image-crop-picker';
-import storage                from '@react-native-firebase/storage';
+import ImageCropPicker from 'react-native-image-crop-picker';
+import storage from '@react-native-firebase/storage';
 import {
   getFirestore,
   collection,
@@ -354,22 +354,23 @@ import {
   serverTimestamp,
   orderBy,
   query,
+  increment,
 } from '@react-native-firebase/firestore';
 
 // ── Design tokens — identical to ManageCategories ─────────────────────────────
 
 const COLORS = {
-  primary      : '#0D7B7A',
-  primaryLight : '#F0FDFA',
+  primary: '#0D7B7A',
+  primaryLight: '#F0FDFA',
   primaryBorder: '#E0F2F1',
-  inactive     : '#94A3B8',
-  surface      : '#FFFFFF',
-  background   : '#F4FAFA',
-  textPrimary  : '#0F172A',
-  textSub      : '#64748B',
-  danger       : '#DC2626',
-  dangerBg     : '#FEE2E2',
-  shadow       : '#0D7B7A',
+  inactive: '#94A3B8',
+  surface: '#FFFFFF',
+  background: '#F4FAFA',
+  textPrimary: '#0F172A',
+  textSub: '#64748B',
+  danger: '#DC2626',
+  dangerBg: '#FEE2E2',
+  shadow: '#0D7B7A',
 };
 
 // Fixed row height → enables getItemLayout
@@ -380,7 +381,7 @@ const ITEM_HEIGHT = CARD_HEIGHT + CARD_MARGIN;
 // ── Image upload helper (mirrors ManageCategories) ────────────────────────────
 
 const uploadImageToStorage = async (localUri) => {
-  const filename  = `subcategories/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+  const filename = `subcategories/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
   const reference = storage().ref(filename);
   await reference.putFile(localUri);
   return await reference.getDownloadURL();
@@ -415,7 +416,7 @@ const SubCategoryCard = memo(({ item, onEdit, onDelete }) => (
           resizeMode="cover"
         />
       ) : ( */}
-        <MatIcon name="shape-outline" size={22} color={COLORS.primary} />
+      <MatIcon name="shape-outline" size={22} color={COLORS.primary} />
       {/* )} */}
     </View>
 
@@ -513,29 +514,29 @@ const ParentBadge = memo(({ categoryName, categoryIcon }) => (
 
 export default function ManageSubCategories() {
   const navigation = useNavigation();
-  const route      = useRoute();
-  const insets     = useSafeAreaInsets();
+  const route = useRoute();
+  const insets = useSafeAreaInsets();
 
   const { categoryId, categoryName, categoryIcon } = route.params;
 
   const [subcategories, setSubcategories] = useState([]);
-  const [loading,       setLoading]       = useState(true);
-  const [error,         setError]         = useState(false);
-  const [modalVisible,  setModalVisible]  = useState(false);
-  const [saving,        setSaving]        = useState(false);
-  const [uploading,     setUploading]     = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Form state
-  const [subName,        setSubName]        = useState('');
-  const [subDesc,        setSubDesc]        = useState('');
-  const [editId,         setEditId]         = useState(null);
-  const [localImageUri,  setLocalImageUri]  = useState(null);
+  const [subName, setSubName] = useState('');
+  const [subDesc, setSubDesc] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [localImageUri, setLocalImageUri] = useState(null);
   const [remoteImageUrl, setRemoteImageUrl] = useState(null);
 
   // ── Firestore listener ────────────────────────────────────────────────────
   useEffect(() => {
-    const db  = getFirestore();
-    const q   = query(
+    const db = getFirestore();
+    const q = query(
       collection(db, 'categories', categoryId, 'subcategories'),
       orderBy('createdAt', 'desc'),
     );
@@ -589,11 +590,11 @@ export default function ManageSubCategories() {
   const handlePickImage = useCallback(async () => {
     try {
       const image = await ImageCropPicker.openPicker({
-        width               : 512,
-        height              : 512,
-        cropping            : true,
+        width: 512,
+        height: 512,
+        cropping: true,
         cropperCircleOverlay: false,
-        mediaType           : 'photo',
+        mediaType: 'photo',
         compressImageQuality: 0.8,
       });
 
@@ -623,10 +624,10 @@ export default function ManageSubCategories() {
     }
 
     setSaving(true);
-    const db   = getFirestore();
+    const db = getFirestore();
     const data = {
-      name       : subName.trim(),
-      icon       : remoteImageUrl || null,
+      name: subName.trim(),
+      icon: remoteImageUrl || null,
       description: subDesc.trim(),
       categoryId,
     };
@@ -641,6 +642,10 @@ export default function ManageSubCategories() {
         await addDoc(
           collection(db, 'categories', categoryId, 'subcategories'),
           { ...data, createdAt: serverTimestamp() },
+          updateDoc(
+            doc(db, 'categories', categoryId),
+            { subcategoryCount: increment(1) },   // ← COUNT +1
+          ),
         );
       }
       setModalVisible(false);
@@ -660,12 +665,16 @@ export default function ManageSubCategories() {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text   : 'Delete',
-          style  : 'destructive',
+          text: 'Delete',
+          style: 'destructive',
           onPress: async () => {
             try {
               await deleteDoc(
                 doc(getFirestore(), 'categories', categoryId, 'subcategories', id),
+                updateDoc(
+                  doc(db, 'categories', categoryId),
+                  { subcategoryCount: increment(-1) },   // ← COUNT -1
+                ),
               );
             } catch (err) {
               Alert.alert('Error', 'Failed to delete subcategory. Please try again.');
@@ -703,7 +712,7 @@ export default function ManageSubCategories() {
   ), []);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const previewUri       = localImageUri || remoteImageUrl;
+  const previewUri = localImageUri || remoteImageUrl;
   const headerPaddingTop = Platform.OS === 'ios'
     ? insets.top + 12
     : insets.top + 16;
@@ -945,451 +954,451 @@ export default function ManageSubCategories() {
 
 const styles = StyleSheet.create({
   container: {
-    flex           : 1,
+    flex: 1,
     backgroundColor: COLORS.background,
   },
   centered: {
     justifyContent: 'center',
-    alignItems    : 'center',
-    padding       : 32,
+    alignItems: 'center',
+    padding: 32,
   },
 
   // ── Header ────────────────────────────────────────────────────────────────
   header: {
-    flexDirection    : 'row',
-    alignItems       : 'center',
-    backgroundColor  : COLORS.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 16,
-    paddingBottom    : 16,
+    paddingBottom: 16,
   },
   backBtn: {
-    width          : 38,
-    height         : 38,
-    borderRadius   : 12,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: COLORS.primaryLight,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginRight    : 10,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   headerCenter: {
-    flex         : 1,
+    flex: 1,
     flexDirection: 'row',
-    alignItems   : 'center',
+    alignItems: 'center',
   },
   headerThumb: {
-    width       : 32,
-    height      : 32,
+    width: 32,
+    height: 32,
     borderRadius: 9,
-    marginRight : 10,
+    marginRight: 10,
   },
   headerThumbFallback: {
-    width          : 32,
-    height         : 32,
-    borderRadius   : 9,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     backgroundColor: COLORS.primaryLight,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginRight    : 10,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   headerTitle: {
-    fontSize  : 18,
+    fontSize: 18,
     fontWeight: '800',
-    color     : COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   headerSub: {
-    fontSize  : 12,
-    color     : COLORS.inactive,
-    marginTop : 2,
+    fontSize: 12,
+    color: COLORS.inactive,
+    marginTop: 2,
     fontWeight: '500',
   },
   headerDivider: {
-    height         : 1,
+    height: 1,
     backgroundColor: COLORS.primaryBorder,
   },
   addBtn: {
-    flexDirection    : 'row',
-    alignItems       : 'center',
-    backgroundColor  : COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
-    paddingVertical  : 10,
-    borderRadius     : 24,
+    paddingVertical: 10,
+    borderRadius: 24,
   },
   addBtnText: {
-    color     : COLORS.surface,
+    color: COLORS.surface,
     fontWeight: '700',
-    fontSize  : 14,
+    fontSize: 14,
     marginLeft: 6,
   },
 
   // ── List ──────────────────────────────────────────────────────────────────
   listContent: {
     paddingHorizontal: 16,
-    paddingTop       : 16,
+    paddingTop: 16,
   },
 
   // ── Subcategory card ──────────────────────────────────────────────────────
   card: {
-    flexDirection    : 'row',
-    alignItems       : 'center',
-    backgroundColor  : COLORS.surface,
-    borderRadius     : 16,
-    paddingVertical  : 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    marginBottom     : CARD_MARGIN,
-    height           : CARD_HEIGHT,
-    shadowColor      : COLORS.shadow,
-    shadowOpacity    : 0.07,
-    shadowRadius     : 10,
-    shadowOffset     : { width: 0, height: 3 },
-    elevation        : 2,
+    marginBottom: CARD_MARGIN,
+    height: CARD_HEIGHT,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   cardIconWrap: {
-    width          : 46,
-    height         : 46,
-    borderRadius   : 13,
+    width: 46,
+    height: 46,
+    borderRadius: 13,
     backgroundColor: COLORS.primaryLight,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginRight    : 12,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
-    overflow       : 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    overflow: 'hidden',
   },
   cardImage: {
-    width : 46,
+    width: 46,
     height: 46,
   },
   cardText: {
-    flex          : 1,
+    flex: 1,
     justifyContent: 'center',
   },
   cardName: {
-    fontSize  : 15,
+    fontSize: 15,
     fontWeight: '700',
-    color     : COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
   cardDesc: {
-    fontSize : 12,
-    color    : COLORS.textSub,
+    fontSize: 12,
+    color: COLORS.textSub,
     marginTop: 3,
   },
   cardNoDesc: {
-    fontSize : 12,
-    color    : COLORS.inactive,
+    fontSize: 12,
+    color: COLORS.inactive,
     marginTop: 3,
     fontStyle: 'italic',
   },
   actionBtn: {
-    width          : 34,
-    height         : 34,
-    borderRadius   : 10,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     backgroundColor: COLORS.primaryLight,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginLeft     : 6,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   actionBtnDanger: {
     backgroundColor: COLORS.dangerBg,
-    borderColor    : '#FCA5A5',
+    borderColor: '#FCA5A5',
   },
 
   // ── Skeleton ──────────────────────────────────────────────────────────────
   skeletonContainer: {
     paddingHorizontal: 16,
-    paddingTop       : 16,
+    paddingTop: 16,
   },
   skeletonCard: {
-    flexDirection    : 'row',
-    alignItems       : 'center',
-    backgroundColor  : COLORS.surface,
-    borderRadius     : 16,
-    paddingVertical  : 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    marginBottom     : CARD_MARGIN,
-    height           : CARD_HEIGHT,
+    marginBottom: CARD_MARGIN,
+    height: CARD_HEIGHT,
   },
   skeletonIcon: {
-    width          : 46,
-    height         : 46,
-    borderRadius   : 13,
+    width: 46,
+    height: 46,
+    borderRadius: 13,
     backgroundColor: '#D1F4F2',
-    marginRight    : 12,
+    marginRight: 12,
   },
-  skeletonLines : { flex: 1 },
-  skeletonLineA : {
-    height         : 14,
-    width          : '60%',
+  skeletonLines: { flex: 1 },
+  skeletonLineA: {
+    height: 14,
+    width: '60%',
     backgroundColor: '#D1F4F2',
-    borderRadius   : 6,
-    marginBottom   : 8,
+    borderRadius: 6,
+    marginBottom: 8,
   },
-  skeletonLineB : {
-    height         : 11,
-    width          : '40%',
+  skeletonLineB: {
+    height: 11,
+    width: '40%',
     backgroundColor: '#E8F9F8',
-    borderRadius   : 6,
+    borderRadius: 6,
   },
 
   // ── Empty state ───────────────────────────────────────────────────────────
   emptyBox: {
-    alignItems       : 'center',
-    paddingTop       : 80,
+    alignItems: 'center',
+    paddingTop: 80,
     paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontSize  : 17,
+    fontSize: 17,
     fontWeight: '700',
-    color     : COLORS.textPrimary,
-    marginTop : 16,
+    color: COLORS.textPrimary,
+    marginTop: 16,
   },
   emptySub: {
-    fontSize : 13,
-    color    : COLORS.inactive,
+    fontSize: 13,
+    color: COLORS.inactive,
     marginTop: 6,
     textAlign: 'center',
   },
 
   // ── Error state ───────────────────────────────────────────────────────────
   errorTitle: {
-    fontSize  : 17,
+    fontSize: 17,
     fontWeight: '700',
-    color     : COLORS.textPrimary,
-    marginTop : 14,
+    color: COLORS.textPrimary,
+    marginTop: 14,
   },
   errorSub: {
-    fontSize : 13,
-    color    : COLORS.inactive,
+    fontSize: 13,
+    color: COLORS.inactive,
     marginTop: 6,
     textAlign: 'center',
   },
 
   // ── Modal ─────────────────────────────────────────────────────────────────
   modalOverlay: {
-    flex           : 1,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent : 'flex-end',
+    justifyContent: 'flex-end',
   },
   modalBox: {
-    backgroundColor     : COLORS.surface,
-    borderTopLeftRadius : 28,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal   : 24,
-    paddingTop          : 12,
+    paddingHorizontal: 24,
+    paddingTop: 12,
     // Cap height so content doesn't overflow on large phones
-    maxHeight           : '92%',
+    maxHeight: '92%',
   },
   modalHandle: {
-    width          : 40,
-    height         : 4,
+    width: 40,
+    height: 4,
     backgroundColor: COLORS.primaryBorder,
-    borderRadius   : 2,
-    alignSelf      : 'center',
-    marginBottom   : 20,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
   },
   modalTitleRow: {
     flexDirection: 'row',
-    alignItems   : 'center',
-    marginBottom : 20,
+    alignItems: 'center',
+    marginBottom: 20,
   },
   modalTitleIcon: {
-    width          : 32,
-    height         : 32,
-    borderRadius   : 10,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: COLORS.primaryLight,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginRight    : 10,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   modalTitle: {
-    flex      : 1,
-    fontSize  : 18,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '800',
-    color     : COLORS.textPrimary,
+    color: COLORS.textPrimary,
   },
 
   // ── Parent badge ──────────────────────────────────────────────────────────
   parentBadge: {
-    flexDirection  : 'row',
-    alignItems     : 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.primaryLight,
-    borderRadius   : 12,
-    padding        : 12,
-    marginBottom   : 18,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   parentBadgeIcon: {
-    width          : 36,
-    height         : 36,
-    borderRadius   : 10,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: COLORS.surface,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginRight    : 10,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
-    overflow       : 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    overflow: 'hidden',
   },
   parentBadgeImage: {
-    width : 36,
+    width: 36,
     height: 36,
   },
   parentBadgeLabel: {
-    fontSize  : 10,
+    fontSize: 10,
     fontWeight: '700',
-    color     : COLORS.inactive,
+    color: COLORS.inactive,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   parentBadgeName: {
-    fontSize  : 13,
+    fontSize: 13,
     fontWeight: '700',
-    color     : COLORS.primary,
-    marginTop : 1,
+    color: COLORS.primary,
+    marginTop: 1,
   },
 
   // ── Field labels & inputs ─────────────────────────────────────────────────
   fieldLabel: {
-    fontSize     : 11,
-    fontWeight   : '700',
-    color        : COLORS.textSub,
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSub,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    marginBottom : 8,
+    marginBottom: 8,
   },
   required: { color: COLORS.danger },
   optional: {
-    color        : COLORS.inactive,
-    fontWeight   : '400',
+    color: COLORS.inactive,
+    fontWeight: '400',
     textTransform: 'none',
   },
   input: {
-    backgroundColor  : COLORS.background,
-    borderWidth      : 1,
-    borderColor      : COLORS.primaryBorder,
-    borderRadius     : 12,
-    paddingVertical  : 12,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    fontSize         : 15,
-    color            : COLORS.textPrimary,
-    marginBottom     : 14,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    marginBottom: 14,
   },
   inputMulti: {
-    backgroundColor  : COLORS.background,
-    borderWidth      : 1,
-    borderColor      : COLORS.primaryBorder,
-    borderRadius     : 12,
-    paddingVertical  : 12,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
+    borderRadius: 12,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    fontSize         : 15,
-    color            : COLORS.textPrimary,
-    marginBottom     : 18,
-    minHeight        : 72,
+    fontSize: 15,
+    color: COLORS.textPrimary,
+    marginBottom: 18,
+    minHeight: 72,
     textAlignVertical: 'top',
   },
 
   // ── Image picker ──────────────────────────────────────────────────────────
   imagePickerBox: {
-    width          : '100%',
-    height         : 140,
-    borderRadius   : 16,
-    borderWidth    : 1.5,
-    borderColor    : COLORS.primaryBorder,
-    borderStyle    : 'dashed',
-    overflow       : 'hidden',
-    marginBottom   : 16,
+    width: '100%',
+    height: 140,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryBorder,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    marginBottom: 16,
     backgroundColor: COLORS.primaryLight,
   },
   imagePickerPlaceholder: {
-    flex          : 1,
-    alignItems    : 'center',
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   imagePickerIconCircle: {
-    width          : 52,
-    height         : 52,
-    borderRadius   : 26,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORS.surface,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    marginBottom   : 8,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   imagePickerLabel: {
-    fontSize    : 13,
-    fontWeight  : '600',
-    color       : COLORS.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
     marginBottom: 3,
   },
   imagePickerHint: {
     fontSize: 11,
-    color   : COLORS.inactive,
+    color: COLORS.inactive,
   },
   imagePickerPreview: {
-    width : '100%',
+    width: '100%',
     height: '100%',
   },
   imagePickerOverlay: {
-    position       : 'absolute',
-    bottom         : 0,
-    left           : 0,
-    right          : 0,
-    height         : 38,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 38,
     backgroundColor: 'rgba(13,123,122,0.75)',
-    flexDirection  : 'row',
-    alignItems     : 'center',
-    justifyContent : 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagePickerOverlayText: {
-    color     : COLORS.surface,
+    color: COLORS.surface,
     fontWeight: '700',
-    fontSize  : 13,
+    fontSize: 13,
     marginLeft: 6,
   },
 
   // ── Modal buttons ─────────────────────────────────────────────────────────
   modalBtns: {
     flexDirection: 'row',
-    marginTop    : 4,
+    marginTop: 4,
   },
   cancelBtn: {
-    flex           : 1,
+    flex: 1,
     backgroundColor: COLORS.background,
-    borderRadius   : 14,
+    borderRadius: 14,
     paddingVertical: 15,
-    alignItems     : 'center',
-    marginRight    : 12,
-    borderWidth    : 1,
-    borderColor    : COLORS.primaryBorder,
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
   },
   cancelBtnText: {
-    color     : COLORS.textSub,
+    color: COLORS.textSub,
     fontWeight: '700',
-    fontSize  : 15,
+    fontSize: 15,
   },
   saveBtn: {
-    flex           : 1,
+    flex: 1,
     backgroundColor: COLORS.primary,
-    borderRadius   : 14,
+    borderRadius: 14,
     paddingVertical: 15,
-    alignItems     : 'center',
-    justifyContent : 'center',
-    flexDirection  : 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: {
-    color     : COLORS.surface,
+    color: COLORS.surface,
     fontWeight: '700',
-    fontSize  : 15,
+    fontSize: 15,
     marginLeft: 6,
   },
 });
