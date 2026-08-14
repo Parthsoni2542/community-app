@@ -1,4 +1,4 @@
-package com.communityadvisory
+package com.kapolsetu.app
 
 import android.app.Application
 import com.facebook.react.PackageList

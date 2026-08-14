@@ -1,4 +1,4 @@
-package com.communityadvisory
+package com.kapolsetu.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

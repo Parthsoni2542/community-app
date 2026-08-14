@@ -58,6 +58,59 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:187110378547:android:5229186ed7b5136d292746",
+        "android_client_info": {
+          "package_name": "com.kapolsetu.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "187110378547-3fojkuf68mh11sri1pl3l46rjbp9og1c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kapolsetu.app",
+            "certificate_hash": "7182d561e3b031075ceacb287bbbbc027a82bd73"
+          }
+        },
+        {
+          "client_id": "187110378547-rvq74bb9f6frehpdb3sb282on99og36c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kapolsetu.app",
+            "certificate_hash": "34196f26ddd8216e8cc4ff57ae3b56bfd6409e5b"
+          }
+        },
+        {
+          "client_id": "187110378547-vdc2h4bg4jhfc2ruir303k2c32p2s4ce.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kapolsetu.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "187110378547-jb9q58vnms51qijh2gjrj2e73gtq512e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7Lr0SGgD6oUfMujCFzEkNC0iaErx0kCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "187110378547-jb9q58vnms51qijh2gjrj2e73gtq512e.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

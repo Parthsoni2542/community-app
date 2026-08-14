@@ -20,6 +20,7 @@ import NotificationScreen from '../screens/user/NotificationScreen';
 import MainChatScreen from '../screens/user/BrodcastChatScreen';
 import BrodcastChatScreen from '../screens/user/BrodcastChatScreen';
 import SubCategoryListScreen from '../screens/user/SubCategoryListScreen';
+import ReportConcern from '../screens/user/ReportConcern';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,8 @@ function ProfileStack() {
       <ProfStackNav.Screen name="EditProfile" component={EditProfile} />
       <ProfStackNav.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <ProfStackNav.Screen name="TermsOfService" component={TermsOfService} />
+      <ProfStackNav.Screen name="ReportConcern" component={ReportConcern} />
+      
     </ProfStackNav.Navigator>
   );
 }
