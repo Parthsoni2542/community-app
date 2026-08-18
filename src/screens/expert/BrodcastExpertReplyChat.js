@@ -5,9 +5,9 @@ import React, {
 } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform,
+  TextInput, Platform,
   ActivityIndicator, StatusBar, Alert, Image,
-  Animated, Dimensions, PermissionsAndroid,
+  Animated, Dimensions, PermissionsAndroid, Keyboard,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
@@ -299,6 +299,11 @@ const ChatHeader = React.memo(({ userName, categoryName, onBack, isBroadcast }) 
 ));
 
 // ─── InputBar ─────────────────────────────────────────────────────────────────
+// NOTE: KeyboardAvoidingView has been REMOVED from here. It now lives once,
+// at the top level of the screen, wrapping the header/list/input together.
+// A KeyboardAvoidingView around just this bar had nothing above it to
+// "avoid" against, so on Android the bar could get pushed behind/under
+// the keyboard even with windowSoftInputMode="adjustResize" set correctly.
 const InputBar = React.memo(({
   text, setText, inputHeight, onContentSizeChange,
   onSend, onImagePick, sending,
@@ -336,61 +341,59 @@ const InputBar = React.memo(({
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.inputBar}>
-        <TouchableOpacity style={styles.attachBtn} onPress={onImagePick} activeOpacity={0.75}>
-          <Icon name="image" size={20} color="#0D7B7A" />
+    <View style={styles.inputBar}>
+      <TouchableOpacity style={styles.attachBtn} onPress={onImagePick} activeOpacity={0.75}>
+        <Icon name="image" size={20} color="#0D7B7A" />
+      </TouchableOpacity>
+
+      <TextInput
+        style={[
+          styles.input,
+          {
+            height: Math.max(
+              INPUT_MIN_HEIGHT,
+              Math.min(inputHeight, INPUT_MIN_HEIGHT + INPUT_LINE_HEIGHT * (INPUT_MAX_LINES - 1)),
+            ),
+          },
+        ]}
+        placeholder="Type a reply…"
+        placeholderTextColor="#9CA3AF"
+        value={text}
+        onChangeText={setText}
+        multiline
+        maxLength={500}
+        onContentSizeChange={onContentSizeChange}
+        textAlignVertical="top"
+      />
+
+      {!text.trim() ? (
+        <TouchableOpacity
+          style={[styles.sendBtn, styles.sendBtnActive]}
+          onPress={onStartRecord}
+          disabled={uploadingVoice}
+          activeOpacity={0.85}
+        >
+          {uploadingVoice
+            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            : <Icon name="mic" size={18} color="#FFFFFF" />
+          }
         </TouchableOpacity>
-
-        <TextInput
-          style={[
-            styles.input,
-            {
-              height: Math.max(
-                INPUT_MIN_HEIGHT,
-                Math.min(inputHeight, INPUT_MIN_HEIGHT + INPUT_LINE_HEIGHT * (INPUT_MAX_LINES - 1)),
-              ),
-            },
-          ]}
-          placeholder="Type a reply…"
-          placeholderTextColor="#9CA3AF"
-          value={text}
-          onChangeText={setText}
-          multiline
-          maxLength={500}
-          onContentSizeChange={onContentSizeChange}
-          textAlignVertical="top"
-        />
-
-        {!text.trim() ? (
+      ) : (
+        <Animated.View style={{ transform: [{ scale: sendScale }] }}>
           <TouchableOpacity
-            style={[styles.sendBtn, styles.sendBtnActive]}
-            onPress={onStartRecord}
-            disabled={uploadingVoice}
+            style={[styles.sendBtn, canSend ? styles.sendBtnActive : styles.sendBtnInactive]}
+            onPress={handleSend}
+            disabled={!canSend}
             activeOpacity={0.85}
           >
-            {uploadingVoice
+            {sending
               ? <ActivityIndicator size="small" color="#FFFFFF" />
-              : <Icon name="mic" size={18} color="#FFFFFF" />
+              : <Icon name="send" size={18} color={canSend ? '#FFFFFF' : '#94A3B8'} />
             }
           </TouchableOpacity>
-        ) : (
-          <Animated.View style={{ transform: [{ scale: sendScale }] }}>
-            <TouchableOpacity
-              style={[styles.sendBtn, canSend ? styles.sendBtnActive : styles.sendBtnInactive]}
-              onPress={handleSend}
-              disabled={!canSend}
-              activeOpacity={0.85}
-            >
-              {sending
-                ? <ActivityIndicator size="small" color="#FFFFFF" />
-                : <Icon name="send" size={18} color={canSend ? '#FFFFFF' : '#94A3B8'} />
-              }
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-      </View>
-    </KeyboardAvoidingView>
+        </Animated.View>
+      )}
+    </View>
   );
 });
 
@@ -451,6 +454,48 @@ export default function BrodcastExpertReplyChat({ route, navigation }) {
 
   const uid = auth().currentUser?.uid;
   const loading = profileLoading || messagesLoading;
+
+  // ── Manual keyboard tracking ─────────────────────────────────────────────────
+  // We do NOT rely on KeyboardAvoidingView / windowSoftInputMode="adjustResize"
+  // here. With a translucent/edge-to-edge StatusBar (which this screen uses),
+  // Android's adjustResize is unreliable — the window is already treated as
+  // "full screen" so the OS often does not resize it when the keyboard opens,
+  // which is exactly why the input bar was getting hidden behind the keyboard.
+  // Tracking Keyboard show/hide events ourselves and pushing the input bar up
+  // with animated bottom padding works regardless of that Android quirk.
+  const keyboardHeight = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e) => {
+      const height = e?.endCoordinates?.height ?? 0;
+      const duration = e?.duration && e.duration > 0 ? e.duration : 220;
+      Animated.timing(keyboardHeight, {
+        toValue: height,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = (e) => {
+      const duration = e?.duration && e.duration > 0 ? e.duration : 200;
+      Animated.timing(keyboardHeight, {
+        toValue: 0,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [keyboardHeight]);
 
   // ── Unmount guard ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -777,6 +822,11 @@ export default function BrodcastExpertReplyChat({ route, navigation }) {
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  // No KeyboardAvoidingView / windowSoftInputMode dependency here anymore.
+  // The bottom Animated.View's paddingBottom is driven directly by the real
+  // measured keyboard height (see the Keyboard listener effect above), so the
+  // input bar gets pushed up above the keyboard reliably — translucent
+  // StatusBar / edge-to-edge or not, and regardless of adjustResize behavior.
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A4F4E" translucent />
@@ -800,6 +850,7 @@ export default function BrodcastExpertReplyChat({ route, navigation }) {
       ) : (
         <FlatList
           ref={flatRef}
+          style={{ flex: 1 }}
           data={messages}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
@@ -822,20 +873,22 @@ export default function BrodcastExpertReplyChat({ route, navigation }) {
         />
       )}
 
-      <InputBar
-        text={text}
-        setText={setText}
-        inputHeight={inputHeight}
-        onContentSizeChange={handleContentSizeChange}
-        onSend={sendTextMessage}
-        onImagePick={handleImagePick}
-        sending={sending}
-        isRecording={isRecording}
-        recordingSecs={recordingSecs}
-        onStartRecord={handleStartRecording}
-        onStopRecord={handleStopRecording}
-        uploadingVoice={uploadingVoice}
-      />
+      <Animated.View style={{ paddingBottom: keyboardHeight }}>
+        <InputBar
+          text={text}
+          setText={setText}
+          inputHeight={inputHeight}
+          onContentSizeChange={handleContentSizeChange}
+          onSend={sendTextMessage}
+          onImagePick={handleImagePick}
+          sending={sending}
+          isRecording={isRecording}
+          recordingSecs={recordingSecs}
+          onStartRecord={handleStartRecording}
+          onStopRecord={handleStopRecording}
+          uploadingVoice={uploadingVoice}
+        />
+      </Animated.View>
 
       <FullScreenImageViewer uri={fullScreenImage} onClose={handleCloseFullScreen} />
     </View>
@@ -942,7 +995,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-end',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 12, paddingVertical: 10,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 33,
     gap: 8,
     borderTopWidth: 1, borderTopColor: '#E0F2F1',
     shadowColor: '#0D7B7A', shadowOpacity: 0.06,

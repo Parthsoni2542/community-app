@@ -5006,7 +5006,7 @@ const InputBar = React.memo(({
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}>
       <View style={styles.inputBar}>
         <TouchableOpacity style={styles.attachBtn} onPress={onImagePick} activeOpacity={0.75}>
           <Icon name="image" size={20} color="#0D7B7A" />

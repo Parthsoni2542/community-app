@@ -2804,9 +2804,9 @@ export default function ExpertDashboard({ navigation }) {
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container  : { flex: 1, backgroundColor: T.bg },
+  container  : { flex: 1, backgroundColor: T.bg,marginTop:40 },
   centered   : { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  listContent: { paddingBottom: 20 },
+  listContent: { paddingBottom: 20 ,},
 
   // Header
   header: {

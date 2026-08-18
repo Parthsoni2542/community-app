@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
   // CTA bar
   ctaBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 80,
+    backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 90,
     borderTopWidth: 1, borderTopColor: '#F1F5F9',
   },
   chatBtn: { borderRadius: 16, overflow: 'hidden' },

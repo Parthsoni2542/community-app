@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
 
   fabWrapper: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 40 : 67,
+    bottom: Platform.OS === 'ios' ? 40 : 87,
     right: 10,
     alignItems: 'center',
   },
